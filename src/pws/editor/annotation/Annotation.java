@@ -6,6 +6,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.Serializable;
 
+import editor.StateMachinePanel;
+
 public class Annotation<T> extends JComponent implements Serializable {
     protected T content; // Generic content field.
     protected Point dragOffset;
@@ -30,6 +32,21 @@ public class Annotation<T> extends JComponent implements Serializable {
                 if (e.isPopupTrigger()) {
                     showPopup(e);
                 }
+
+                // Snap annotation to grid if parent panel supports it
+                java.awt.Container parent = SwingUtilities.getAncestorOfClass(StateMachinePanel.class, Annotation.this);
+                if (parent instanceof StateMachinePanel panel && panel.isSnapToGrid()) {
+                    int grid = panel.getGridSize();
+                    int x = getX();
+                    int y = getY();
+                    int snappedX = Math.round(x / (float) grid) * grid;
+                    int snappedY = Math.round(y / (float) grid) * grid;
+                    setLocation(snappedX, snappedY);
+                    if (getParent() != null) {
+                        getParent().repaint();
+                    }
+                }
+
                 dragOffset = null;
             }
             @Override

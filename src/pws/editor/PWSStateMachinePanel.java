@@ -420,30 +420,53 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     }
 
     @Override
+    public void mouseDragged(MouseEvent e) {
+        if (selectedTransitionForControl != null && controlDragOffset != null) {
+            Point newPoint = e.getPoint();
+            Point newControlPoint = new Point(newPoint.x - controlDragOffset.x, newPoint.y - controlDragOffset.y);
+            if (snapToGrid) {
+                newControlPoint = snap(newControlPoint);
+            }
+            ((Transition) selectedTransitionForControl).setControlPoint(newControlPoint);
+            repaint();
+        } else if (selectedState != null && dragOffset != null) {
+            Point newPoint = e.getPoint();
+            Point newPos = new Point(newPoint.x - dragOffset.x, newPoint.y - dragOffset.y);
+            if (snapToGrid) {
+                newPos = snap(newPos);
+            }
+            ((machinery.State) selectedState).setPosition(newPos);
+            repaint();
+        }
+    }
+@Override
     public void mouseReleased(MouseEvent e) {
         if (SwingUtilities.isRightMouseButton(e) || e.isPopupTrigger()) {
             handleRightClick(e);
             return;
         }
+
+        // Final snap on release, in case of small offsets
+        if (snapToGrid) {
+            if (selectedState != null) {
+                machinery.State st = (machinery.State) selectedState;
+                java.awt.Point pos = st.getPosition();
+                st.setPosition(snap(pos));
+            }
+            if (selectedTransitionForControl != null) {
+                machinery.Transition tr = (machinery.Transition) selectedTransitionForControl;
+                java.awt.Point cp = tr.getControlPoint();
+                if (cp != null) {
+                    tr.setControlPoint(snap(cp));
+                }
+            }
+        }
+
         selectedTransitionForControl = null;
         controlDragOffset = null;
         selectedState = null;
         dragOffset = null;
         repaint();
-    }
-
-    @Override
-    public void mouseDragged(MouseEvent e) {
-        if (selectedTransitionForControl != null && controlDragOffset != null) {
-            Point newPoint = e.getPoint();
-            Point newControlPoint = new Point(newPoint.x - controlDragOffset.x, newPoint.y - controlDragOffset.y);
-            ((Transition) selectedTransitionForControl).setControlPoint(newControlPoint);
-            repaint();
-        } else if (selectedState != null && dragOffset != null) {
-            Point newPoint = e.getPoint();
-            ((machinery.State) selectedState).setPosition(new Point(newPoint.x - dragOffset.x, newPoint.y - dragOffset.y));
-            repaint();
-        }
     }
 
     @Override

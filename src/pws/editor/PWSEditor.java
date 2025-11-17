@@ -312,6 +312,43 @@ public class PWSEditor extends JFrame {
             panel.repaint();
         });
         viewMenu.add(showStateAnn);
+
+        JCheckBoxMenuItem showGridItem = new JCheckBoxMenuItem("Show grid", true);
+        showGridItem.addActionListener(e -> {
+            PWSStateMachinePanel panel =
+                (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+            panel.setShowGrid(showGridItem.isSelected());
+            panel.repaint();
+        });
+        viewMenu.add(showGridItem);
+
+        JCheckBoxMenuItem snapToGridItem = new JCheckBoxMenuItem("Snap to grid", true);
+        snapToGridItem.addActionListener(e -> {
+            PWSStateMachinePanel panel =
+                (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+            panel.setSnapToGrid(snapToGridItem.isSelected());
+        });
+        viewMenu.add(snapToGridItem);
+
+        JMenuItem gridSizeItem = new JMenuItem("Set grid size...");
+        gridSizeItem.addActionListener(e -> {
+            PWSStateMachinePanel panel =
+                (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+            String input = JOptionPane.showInputDialog(this, "Grid size (pixels):", panel.getGridSize());
+            if (input != null) {
+                try {
+                    int size = Integer.parseInt(input.trim());
+                    if (size > 0) {
+                        panel.setGridSize(size);
+                        panel.repaint();
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        viewMenu.add(gridSizeItem);
+
         menuBar.add(viewMenu);
         return menuBar;
     }

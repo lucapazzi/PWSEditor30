@@ -190,6 +190,35 @@ public class StateMachineEditor extends JFrame {
         editMenu.add(editModeItem);
 
         menuBar.add(editMenu);
+        // View menu (grid and snapping)
+        JMenu viewMenu = new JMenu("View");
+
+        JCheckBoxMenuItem showGridItem = new JCheckBoxMenuItem("Show grid", true);
+        showGridItem.addActionListener(e -> statePanel.setShowGrid(showGridItem.isSelected()));
+        viewMenu.add(showGridItem);
+
+        JCheckBoxMenuItem snapToGridItem = new JCheckBoxMenuItem("Snap to grid", true);
+        snapToGridItem.addActionListener(e -> statePanel.setSnapToGrid(snapToGridItem.isSelected()));
+        viewMenu.add(snapToGridItem);
+
+        JMenuItem gridSizeItem = new JMenuItem("Set grid size...");
+        gridSizeItem.addActionListener(e -> {
+            String input = JOptionPane.showInputDialog(this, "Grid size (pixels):", statePanel.getGridSize());
+            if (input != null) {
+                try {
+                    int size = Integer.parseInt(input.trim());
+                    if (size > 0) {
+                        statePanel.setGridSize(size);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Valore non valido", "Errore", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        viewMenu.add(gridSizeItem);
+
+        menuBar.add(viewMenu);
+
         return menuBar;
     }
 

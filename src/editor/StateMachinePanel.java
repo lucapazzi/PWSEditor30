@@ -32,7 +32,37 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
     // Flag to show control handles
     protected boolean showControlHandles = true;
 
-    // Initial transition mode flag
+    // Grid and snapping
+    protected boolean showGrid = true;
+    protected boolean snapToGrid = true;
+    protected int gridSize = 20;
+
+    public boolean isShowGrid() {
+        return showGrid;
+    }
+
+    public void setShowGrid(boolean showGrid) {
+        this.showGrid = showGrid;
+        repaint();
+    }
+
+    public boolean isSnapToGrid() {
+        return snapToGrid;
+    }
+
+    public void setSnapToGrid(boolean snapToGrid) {
+        this.snapToGrid = snapToGrid;
+    }
+
+    public int getGridSize() {
+        return gridSize;
+    }
+
+    public void setGridSize(int gridSize) {
+        this.gridSize = gridSize;
+        repaint();
+    }
+// Initial transition mode flag
     protected boolean initialTransitionMode = false;
 
     // Graphic constants
@@ -96,6 +126,9 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        if (showGrid) {
+            drawGrid(g);
+        }
         // Remove previous trigger labels before redrawing
         // removeAllTriggerLabels();
         drawStates(g);
@@ -431,6 +464,23 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             handleRightClick(e);
             return;
         }
+
+        // Snap states and control points to grid on release
+        if (snapToGrid) {
+            if (selectedState != null) {
+                State st = (State) selectedState;
+                Point pos = st.getPosition();
+                st.setPosition(snap(pos));
+            }
+            if (selectedTransitionForControl != null) {
+                Transition tr = (Transition) selectedTransitionForControl;
+                Point cp = tr.getControlPoint();
+                if (cp != null) {
+                    tr.setControlPoint(snap(cp));
+                }
+            }
+        }
+
         selectedTransitionForControl = null;
         controlDragOffset = null;
         selectedState = null;
@@ -612,4 +662,27 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             target.getIncomingTransitions().remove(t);
         }
     }
+
+
+    private void drawGrid(Graphics g) {
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setColor(new Color(230, 230, 230)); // light gray grid
+        int w = getWidth();
+        int h = getHeight();
+        for (int x = 0; x < w; x += gridSize) {
+            g2d.drawLine(x, 0, x, h);
+        }
+        for (int y = 0; y < h; y += gridSize) {
+            g2d.drawLine(0, y, w, y);
+        }
+    }
+
+    protected int snap(int value) {
+        return Math.round(value / (float) gridSize) * gridSize;
+    }
+
+    protected Point snap(Point p) {
+        return new Point(snap(p.x), snap(p.y));
+    }
+
 }

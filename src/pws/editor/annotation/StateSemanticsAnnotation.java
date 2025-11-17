@@ -124,7 +124,7 @@ public class StateSemanticsAnnotation extends Annotation<PWSState> {
         List<String> cfgStrs = new ArrayList<>();
         // Compute which state configurations are covered by at least one outgoing guard
         PWSStateMachine pwsMachine = ((PWSStateMachinePanel) getParent()).getStateMachine();
-        assembly.Assembly asm = pwsMachine.getAssembly();
+        Assembly asm = pwsMachine.getAssembly();
         Set<String> coveredCfgStrs = new HashSet<>();
         for (machinery.TransitionInterface ti2 : pwsMachine.getTransitions()) {
             if (ti2 instanceof pws.PWSTransition pt2 && pt2.getSource() == state) {
