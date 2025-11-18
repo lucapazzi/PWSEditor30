@@ -4,6 +4,7 @@ import assembly.Assembly;
 import assembly.AssemblyInterface;
 import assembly.GuardActionsPair;
 import editor.StateMachineEditor;
+import editor.StateMachinePanel;
 import machinery.StateMachine;
 import pws.PWSState;
 import pws.PWSStateMachine;
@@ -209,24 +210,28 @@ public class PWSEditor extends JFrame {
         // New: Export as SVG menu item.
         JMenuItem exportSVGItem = new JMenuItem("Esporta come SVG");
         exportSVGItem.addActionListener(e -> {
-            // Assume we want to export the "Editor" tab (tab index 0)
-            Component comp = tabbedPane.getComponentAt(0);
-            if (comp instanceof JPanel) {
-                JPanel editorPanel = (JPanel) comp;
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("File SVG", "svg"));
-                int option = fileChooser.showSaveDialog(PWSEditor.this);
-                if (option == JFileChooser.APPROVE_OPTION) {
-                    File file = fileChooser.getSelectedFile();
-                    if (!file.getName().toLowerCase().endsWith(".svg")) {
-                        file = new File(file.getAbsolutePath() + ".svg");
-                    }
-                    editorPanel.revalidate();
-                    editorPanel.repaint();
-                    // Call the SVGExporter.exportPanelToSVGFile method to save the SVG file.
-                    SVGExporter.exportPanelToSVGFile(editorPanel, file);
-                    JOptionPane.showMessageDialog(PWSEditor.this, "File SVG salvato correttamente.");
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(
+                    new javax.swing.filechooser.FileNameExtensionFilter("File SVG", "svg"));
+
+            if (fileChooser.showSaveDialog(PWSEditor.this)
+                    == JFileChooser.APPROVE_OPTION) {
+
+                File file = fileChooser.getSelectedFile();
+                if (!file.getName().toLowerCase().endsWith(".svg")) {
+                    file = new File(file.getAbsolutePath() + ".svg");
                 }
+
+                // 👇 QUI LA DIFFERENZA IMPORTANTE
+                // Non esportiamo più l'intero editorPanel (che include il bottone),
+                // ma solo il pannello della macchina a stati dal baseEditor.
+                StateMachinePanel panel =
+                        ((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+
+                SVGExporter.exportPanelToSVGFile(panel, file);
+
+                JOptionPane.showMessageDialog(PWSEditor.this,
+                        "File SVG salvato correttamente.");
             }
         });
         fileMenu.add(exportSVGItem);

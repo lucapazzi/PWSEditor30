@@ -118,19 +118,23 @@ public class StateMachineEditor extends JFrame {
         fileMenu.addSeparator();
         JMenuItem exportSVGItem = new JMenuItem("Esporta come SVG");
         exportSVGItem.addActionListener(e -> {
-            // Export the statePanel (graph content) as SVG.
             JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("File SVG", "svg"));
-            int option = fileChooser.showSaveDialog(StateMachineEditor.this);
-            if (option == JFileChooser.APPROVE_OPTION) {
+            fileChooser.setFileFilter(
+                    new javax.swing.filechooser.FileNameExtensionFilter("File SVG", "svg"));
+
+            if (fileChooser.showSaveDialog(StateMachineEditor.this)
+                    == JFileChooser.APPROVE_OPTION) {
+
                 File file = fileChooser.getSelectedFile();
                 if (!file.getName().toLowerCase().endsWith(".svg")) {
                     file = new File(file.getAbsolutePath() + ".svg");
                 }
-                statePanel.revalidate();
-                statePanel.repaint();
+
+                // QUI: solo il pannello grafico, com’era prima
                 SVGExporter.exportPanelToSVGFile(statePanel, file);
-                JOptionPane.showMessageDialog(StateMachineEditor.this, "File SVG salvato correttamente.");
+
+                JOptionPane.showMessageDialog(StateMachineEditor.this,
+                        "File SVG salvato correttamente.");
             }
         });
         fileMenu.add(exportSVGItem);

@@ -431,11 +431,27 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             repaint();
         } else if (selectedState != null && dragOffset != null) {
             Point newPoint = e.getPoint();
-            Point newPos = new Point(newPoint.x - dragOffset.x, newPoint.y - dragOffset.y);
+            // posizione grezza (angolo in alto a sinistra)
+            int rawX = newPoint.x - dragOffset.x;
+            int rawY = newPoint.y - dragOffset.y;
+
+            machinery.State st = (machinery.State) selectedState;
+
+            // scegli il diametro corretto (stato normale vs pseudostato)
+            int d = st.getName().equals("PseudoState") ? PSEUDO_DIAMETER : DIAMETER;
+            int r = d / 2;
+
             if (snapToGrid) {
-                newPos = snap(newPos);
+                // centro corrente rispetto alla nuova posizione
+                Point center = new Point(rawX + r, rawY + r);
+                // snap del centro alla griglia
+                Point snappedCenter = snap(center);
+                // ricalcola l’angolo in alto a sinistra a partire dal centro snap-pato
+                rawX = snappedCenter.x - r;
+                rawY = snappedCenter.y - r;
             }
-            ((machinery.State) selectedState).setPosition(newPos);
+
+            st.setPosition(new Point(rawX, rawY));
             repaint();
         }
     }
@@ -447,22 +463,30 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         }
 
         // Final snap on release, in case of small offsets
-        if (snapToGrid) {
-            if (selectedState != null) {
-                machinery.State st = (machinery.State) selectedState;
-                java.awt.Point pos = st.getPosition();
-                st.setPosition(snap(pos));
-            }
-            if (selectedTransitionForControl != null) {
-                machinery.Transition tr = (machinery.Transition) selectedTransitionForControl;
-                java.awt.Point cp = tr.getControlPoint();
-                if (cp != null) {
-                    tr.setControlPoint(snap(cp));
-                }
-            }
+    if (snapToGrid) {
+        if (selectedState != null) {
+            machinery.State st = (machinery.State) selectedState;
+            java.awt.Point pos = st.getPosition();
+
+            int d = st.getName().equals("PseudoState") ? PSEUDO_DIAMETER : DIAMETER;
+            int r = d / 2;
+
+            // centro attuale
+            Point center = new Point(pos.x + r, pos.y + r);
+            // snap del centro
+            Point snappedCenter = snap(center);
+            // nuova posizione top-left
+            Point newPos = new Point(snappedCenter.x - r, snappedCenter.y - r);
+
+            st.setPosition(newPos);
         }
 
-        selectedTransitionForControl = null;
+        // qui lasci invariato lo snap del control point:
+        // if (selectedTransitionForControl != null) { ... }
+    }
+
+
+    selectedTransitionForControl = null;
         controlDragOffset = null;
         selectedState = null;
         dragOffset = null;
