@@ -2,10 +2,10 @@
 
 **PWSEditor** is a graphical environment for designing and analysing
 *Part-Whole Statecharts (PWS)*—a behavioural modelling formalism
-for hierarchical assemblies of components interacting synchronously.
-The editor supports the construction of PWS controllers, the specification
-of state-level constraints, and the visualisation of computed semantics and
-reactive spaces.
+for hierarchical assemblies of components interacting both synchronously
+and asynchronously.  The editor supports the construction of PWS
+controllers, the specification of state-level constraints, and the
+visualisation of computed semantics and reactive spaces.
 
 ## Features
 
