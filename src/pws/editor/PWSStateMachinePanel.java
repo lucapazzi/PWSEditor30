@@ -608,12 +608,12 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         JPopupMenu popup = new JPopupMenu();
 
         // Elemento per eliminare la transizione
-        JMenuItem deleteItem = new JMenuItem("Elimina Transizione");
+        JMenuItem deleteItem = new JMenuItem("Delete Transition");
         deleteItem.addActionListener(ae -> {
             int confirm = JOptionPane.showConfirmDialog(
                     this,
-                    "Sei sicuro di voler cancellare la transizione?",
-                    "Conferma cancellazione",
+                    "Are you sure you want to delete the transition?",
+                    "Confirm deletion",
                     JOptionPane.YES_NO_OPTION);
             if(confirm == JOptionPane.YES_OPTION) {
                 deleteTransition(t); // Metodo helper che rimuove la transizione e i suoi riferimenti.
@@ -676,18 +676,19 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     }
 
     protected  void showPopupMenuForState(MouseEvent e, StateInterface state) {
-        System.out.println("showPopupMenuForState: Stato rilevato: " + state.getName()
-                + " - Tipo: " + state.getClass().getName());
+                System.out.println("showPopupMenuForState: Detected state: " + state.getName()
+                                + " - Type: " + state.getClass().getName());
+
         JPopupMenu popup = new JPopupMenu();
 
         if (state instanceof PWSState && ((PWSState) state).isPseudoState()) {
             PWSState pwsState = (PWSState) state;
             // Usa un menu item di toggle per il pseudostato
-            String toggleText = pwsState.isAnnotationVisible() ? "Nascondi annotazione" : "Mostra annotazione";
+            String toggleText = pwsState.isAnnotationVisible() ? "Hide annotation" : "Show annotation";
             JMenuItem toggleAnnotItem = new JMenuItem(toggleText);
             toggleAnnotItem.addActionListener(ae -> {
                 if (!pwsState.isAnnotationVisible()) {
-                    System.out.println("Mostra annotazione pseudostato invoked");
+                    System.out.println("Show pseudo-state annotation invoked");
                     // Crea l'annotazione se non esiste e la rende visibile
                     StateSemanticsAnnotation annot = pwsState.getAnnotation();
                     if (annot == null) {
@@ -697,17 +698,17 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                         annot.setBounds(pos.x, pos.y - 40, 120, 30);
                         pwsState.setAnnotation(annot);
                         add(annot);
-                        System.out.println("Creato nuovo StateAnnotation per " + pwsState.getName());
+                        System.out.println("Created new StateAnnotation for " + pwsState.getName());
                     } else {
                         annot.setVisible(true);
-                        System.out.println("Impostata visibilità StateAnnotation a true");
+                        System.out.println("Set StateAnnotation visibility to true");
                     }
                     pwsState.setAnnotationVisible(true);
                 } else {
                     // Se l'annotazione è visibile, la nasconde
                     if (pwsState.getAnnotation() != null) {
                         pwsState.getAnnotation().setVisible(false);
-                        System.out.println("Annotazione pseudostato nascosta");
+                        System.out.println("Pseudo-state annotation hidden");
                     }
                     pwsState.setAnnotationVisible(false);
                 }
@@ -716,14 +717,14 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             });
             popup.add(toggleAnnotItem);
 
-            JMenuItem infoItem = new JMenuItem("Pseudostato non eliminabile");
+            JMenuItem infoItem = new JMenuItem("Pseudo-state cannot be deleted");
             infoItem.setEnabled(false);
             popup.add(infoItem);
         } else {
             // Caso stato normale
-            JMenuItem editItem = new JMenuItem("Modifica");
+            JMenuItem editItem = new JMenuItem("Edit");
             editItem.addActionListener(ae -> {
-                String newName = JOptionPane.showInputDialog(this, "Nuovo nome per lo stato:", state.getName());
+                String newName = JOptionPane.showInputDialog(this, "New name for the state:", state.getName());
                 if (newName != null && !newName.trim().isEmpty()) {
                     ((machinery.State) state).setName(newName);
                     repaint();
@@ -744,9 +745,9 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 PWSState pwsState = (PWSState) state;
                 JMenuItem toggleAnnot;
                 if (pwsState.isAnnotationVisible()) {
-                    toggleAnnot = new JMenuItem("Nascondi Annotazione");
+                    toggleAnnot = new JMenuItem("Hide Annotation");
                 } else {
-                    toggleAnnot = new JMenuItem("Mostra Annotazione");
+                    toggleAnnot = new JMenuItem("Show Annotation");
                 }
                 toggleAnnot.addActionListener(ae -> {
                     boolean newVisible = !pwsState.isAnnotationVisible();
@@ -758,7 +759,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                             annot.setBounds(pos.x, pos.y - 40, 120, 30);
                             pwsState.setAnnotation(annot);
                             add(annot);
-                            System.out.println("Creato nuovo StateAnnotation per " + pwsState.getName());
+                            System.out.println("Created new Annotation for " + pwsState.getName());
                         } else {
                             pwsState.getAnnotation().setVisible(true);
                         }
@@ -773,11 +774,11 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 popup.add(toggleAnnot);
             }
 
-            JMenuItem deleteItem = new JMenuItem("Elimina");
+            JMenuItem deleteItem = new JMenuItem("Delete");
             deleteItem.addActionListener(ae -> {
                 int confirm = JOptionPane.showConfirmDialog(this,
-                        "Sei sicuro di voler cancellare lo stato \"" + state.getName() + "\"?",
-                        "Conferma cancellazione", JOptionPane.YES_NO_OPTION);
+                        "Are you sure you want to delete state \"" + state.getName() + "\"?",
+                        "Confirm deletion", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     // In the PWS case, remove the state's annotation if it exists.
                     if (state instanceof PWSState) {

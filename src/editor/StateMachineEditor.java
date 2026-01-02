@@ -15,14 +15,14 @@ public class StateMachineEditor extends JFrame {
     protected StateMachinePanel statePanel;
     protected Assembly assembly;
 
-    // Costruttore predefinito (usa titolo "StateMachine Editor")
+    // Default constructor (uses title "StateMachine Editor")
     public StateMachineEditor(StateMachine stateMachine, String title) {
         super(title);
         this.stateMachine = stateMachine;
         initComponents();
     }
 
-    // Nuovo costruttore che permette di specificare il titolo (ad es. "id : M")
+    // New constructor that allows specifying a title (e.g. "id : M")
     public StateMachineEditor(StateMachine stateMachine, Assembly assembly, String title) {
         super(title);
         this.stateMachine = stateMachine;
@@ -42,15 +42,15 @@ public class StateMachineEditor extends JFrame {
     protected JMenuBar createMenuBar() {
         JMenuBar menuBar = new JMenuBar();
 
-        // Menu File
+        // File Menu
         JMenu fileMenu = new JMenu("File");
 // --- Existing File Menu Items above ---
 
 // Load Single Machine
-        JMenuItem loadMachineItem = new JMenuItem("Carica Macchina Singola");
+        JMenuItem loadMachineItem = new JMenuItem("Load Single Machine");
         loadMachineItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("File Macchina (sm)", "sm"));
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Machine File (sm)", "sm"));
             int option = fileChooser.showOpenDialog(StateMachineEditor.this);
             if (option == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
@@ -74,21 +74,21 @@ public class StateMachineEditor extends JFrame {
                     // stateMachine.pseudoState = clonedMachine.getPseudoState();
 
                     JOptionPane.showMessageDialog(StateMachineEditor.this,
-                            "Macchina caricata correttamente: " + clonedMachine.getName());
+                            "Machine successfully loaded: " + clonedMachine.getName());
                     statePanel.repaint();
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     JOptionPane.showMessageDialog(StateMachineEditor.this,
-                            "Errore nel caricamento della macchina: " + ex.getMessage());
+                            "Error loading machine: " + ex.getMessage());
                 }
             }
         });
 
 // Save Single Machine
-        JMenuItem saveMachineItem = new JMenuItem("Salva Macchina Singola");
+        JMenuItem saveMachineItem = new JMenuItem("Save Single Machine");
         saveMachineItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("File Macchina (sm)", "sm"));
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Machine File (sm)", "sm"));
             int option = fileChooser.showSaveDialog(StateMachineEditor.this);
             if (option == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
@@ -99,11 +99,11 @@ public class StateMachineEditor extends JFrame {
                     oos.writeObject(stateMachine);
                     oos.flush();
                     JOptionPane.showMessageDialog(StateMachineEditor.this,
-                            "Macchina salvata: " + stateMachine.getName());
+                            "Machine saved: " + stateMachine.getName());
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     JOptionPane.showMessageDialog(StateMachineEditor.this,
-                            "Errore nel salvataggio della macchina: " + ex.getMessage());
+                            "Error saving machine: " + ex.getMessage());
                 }
             }
         });
@@ -111,16 +111,16 @@ public class StateMachineEditor extends JFrame {
 
 // --- Then the existing Exit menu item follows ---
 
-        JMenuItem exitItem = new JMenuItem("Esci");
+        JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.addActionListener(e -> System.exit(0));
         fileMenu.add(loadMachineItem);
         fileMenu.add(saveMachineItem);
         fileMenu.addSeparator();
-        JMenuItem exportSVGItem = new JMenuItem("Esporta come SVG");
+        JMenuItem exportSVGItem = new JMenuItem("Export as SVG");
         exportSVGItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setFileFilter(
-                    new javax.swing.filechooser.FileNameExtensionFilter("File SVG", "svg"));
+                    new javax.swing.filechooser.FileNameExtensionFilter("SVG File", "svg"));
 
             if (fileChooser.showSaveDialog(StateMachineEditor.this)
                     == JFileChooser.APPROVE_OPTION) {
@@ -130,24 +130,24 @@ public class StateMachineEditor extends JFrame {
                     file = new File(file.getAbsolutePath() + ".svg");
                 }
 
-                // QUI: solo il pannello grafico, com’era prima
+                // HERE: just the graphic panel, as before
                 SVGExporter.exportPanelToSVGFile(statePanel, file);
 
                 JOptionPane.showMessageDialog(StateMachineEditor.this,
-                        "File SVG salvato correttamente.");
+                        "SVG file successfully saved.");
             }
         });
         fileMenu.add(exportSVGItem);
         fileMenu.add(exitItem);
         menuBar.add(fileMenu);
 
-        // Menu Modifica
-        JMenu editMenu = new JMenu("Modifica");
+        // Edit Menu
+        JMenu editMenu = new JMenu("Edit");
 
-// 1. Aggiungi Stato
-        JMenuItem addStateItem = new JMenuItem("Aggiungi Stato");
+// 1. Add State
+        JMenuItem addStateItem = new JMenuItem("Add State");
         addStateItem.addActionListener(e -> {
-            String name = JOptionPane.showInputDialog(this, "Inserisci il nome dello stato:");
+            String name = JOptionPane.showInputDialog(this, "Enter state name:");
             if (name != null && !name.trim().isEmpty()) {
                 stateMachine.addState(new State(name, new Point(50, 50)));
                 statePanel.repaint();
@@ -155,41 +155,41 @@ public class StateMachineEditor extends JFrame {
         });
         editMenu.add(addStateItem);
 
-// 2. Aggiungi transizione iniziale
-        JMenuItem addInitialTransitionItem = new JMenuItem("Aggiungi transizione iniziale");
+// 2. Add initial transition
+        JMenuItem addInitialTransitionItem = new JMenuItem("Add initial transition");
         addInitialTransitionItem.addActionListener(e -> statePanel.enableInitialTransitionMode());
         editMenu.add(addInitialTransitionItem);
 
         editMenu.addSeparator();
 
-// 3. Aggiungi transizione
-//        JMenuItem addTransitionItem = new JMenuItem("Aggiungi Transizione");
+// 3. Add transition
+//        JMenuItem addTransitionItem = new JMenuItem("Add Transition");
 //        addTransitionItem.addActionListener(e -> {
-//            String sourceName = JOptionPane.showInputDialog(this, "Inserisci il nome dello stato sorgente:");
-//            String targetName = JOptionPane.showInputDialog(this, "Inserisci il nome dello stato target:");
+//            String sourceName = JOptionPane.showInputDialog(this, "Enter source state name:");
+//            String targetName = JOptionPane.showInputDialog(this, "Enter target state name:");
 //            if (sourceName != null && targetName != null) {
 //                StateInterface source = findStateByName(sourceName);
 //                StateInterface target = findStateByName(targetName);
 //                if (source != null && target != null) {
-//                    String trigger = JOptionPane.showInputDialog(this, "Inserisci il trigger event (lascia vuoto per autonoma):");
+//                    String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave empty for autonomous):");
 //                    boolean autonomous = (trigger == null || trigger.trim().isEmpty());
 //                    TransitionInterface newTransition = new Transition(source, target, autonomous, trigger);
 //                    stateMachine.addTransition(newTransition);
 //                    statePanel.repaint();
 //                } else {
-//                    JOptionPane.showMessageDialog(this, "Stato sorgente o target non trovato.");
+//                    JOptionPane.showMessageDialog(this, "Source or target state not found.");
 //                }
 //            }
 //        });
 //        editMenu.add(addTransitionItem);
 
-// 4. Crea transizione (modalità collega)
-        JMenuItem linkModeItem = new JMenuItem("Crea transizione (modalità collega)");
+// 4. Create transition (link mode)
+        JMenuItem linkModeItem = new JMenuItem("Create transition (link mode)");
         linkModeItem.addActionListener(e -> statePanel.enableLinkMode());
         editMenu.add(linkModeItem);
 
-// 5. Modalità modifica (checkbox)
-        JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Modalità modifica", true);
+// 5. Edit mode (checkbox)
+        JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Edit mode", true);
         editModeItem.addActionListener(e -> statePanel.setShowControlHandles(editModeItem.isSelected()));
         editMenu.add(editModeItem);
 
@@ -215,7 +215,7 @@ public class StateMachineEditor extends JFrame {
                         statePanel.setGridSize(size);
                     }
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Valore non valido", "Errore", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Invalid value", "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
@@ -235,7 +235,7 @@ public class StateMachineEditor extends JFrame {
         return null;
     }
 
-    public StateMachinePanel    getStateMachinePanel() {
+    public StateMachinePanel getStateMachinePanel() {
         return statePanel;
     }
 

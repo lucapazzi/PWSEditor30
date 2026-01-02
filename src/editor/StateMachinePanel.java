@@ -600,7 +600,7 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         JPopupMenu popup = new JPopupMenu();
 
         // Voce di menu per eliminare la transizione
-        JMenuItem deleteItem = new JMenuItem("Elimina Transizione");
+        JMenuItem deleteItem = new JMenuItem("Delete Transition");
         deleteItem.addActionListener(ae -> {
             // Utilizza il metodo helper per rimuovere la transizione e tutti i riferimenti associati
             deleteTransition(t);
@@ -619,9 +619,9 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
     private void showPopupMenuForState(MouseEvent e, StateInterface state) {
         System.out.println("showPopupMenuForState invoked for state: " + state.getName());
         JPopupMenu popup = new JPopupMenu();
-        JMenuItem editItem = new JMenuItem("Modifica");
+        JMenuItem editItem = new JMenuItem("Modify");
         editItem.addActionListener(ae -> {
-            String newName = JOptionPane.showInputDialog(this, "Nuovo nome per lo stato:", state.getName());
+            String newName = JOptionPane.showInputDialog(this, "New name for state:", state.getName());
             if (newName != null && !newName.trim().isEmpty()) {
                 ((State) state).setName(newName);
                 repaint();
@@ -629,26 +629,26 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         });
         popup.add(editItem);
         if (!state.getName().equals("PseudoState")) {
-            JMenuItem deleteItem = new JMenuItem("Elimina");
+            JMenuItem deleteItem = new JMenuItem("Delete");
             deleteItem.addActionListener(ae -> {
                 System.out.println("Delete menu item clicked for state: " + state.getName());
                 int confirm = JOptionPane.showConfirmDialog(this,
-                        "Sei sicuro di voler cancellare lo stato \"" + state.getName() + "\"?",
+                        "Are you sure to delete state: " + state.getName() + "\"?",
                         "Conferma cancellazione", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     boolean removed = stateMachine.getStates().remove(state);
                     if (removed) {
                         stateMachine.getTransitions().removeIf(t -> t.getSource() == state || t.getTarget() == state);
-                        System.out.println("Lo stato e le transizioni correlate sono stati rimossi dalla struttura dati.");
+                        System.out.println("The state and related transitions have been removed from the structure.");
                     } else {
-                        System.out.println("Errore: lo stato non è stato rimosso dalla struttura dati.");
+                        System.out.println("Error: state not found in the structure.");
                     }
                     repaint();
                 }
             });
             popup.add(deleteItem);
         } else {
-            JMenuItem infoItem = new JMenuItem("Pseudostato non eliminabile");
+            JMenuItem infoItem = new JMenuItem("Pseudostate not deletable");
             infoItem.setEnabled(false);
             popup.add(infoItem);
         }

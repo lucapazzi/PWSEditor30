@@ -56,7 +56,7 @@ public class PWSDialogs {
         // Riga 0: Label e JComboBox per la guardia.
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panel.add(new JLabel("Seleziona una guard (m.S):"), gbc);
+        panel.add(new JLabel("Select a guard (m.S):"), gbc);
         gbc.gridx = 1;
         JComboBox<String> guardCombo = new JComboBox<>(guardOptions.toArray(new String[0]));
         guardCombo.setPreferredSize(new Dimension(200, 25));
@@ -71,7 +71,7 @@ public class PWSDialogs {
 
             gbc.gridx = 0;
             gbc.gridy = row;
-            panel.add(new JLabel("Azione per " + machineId + ":"), gbc);
+            panel.add(new JLabel("Action for " + machineId + ":"), gbc);
 
             gbc.gridx = 1;
             // Creiamo un JComboBox per le azioni con una opzione predefinita "None".
@@ -87,7 +87,7 @@ public class PWSDialogs {
             row++;
         }
 
-        int result = JOptionPane.showConfirmDialog(null, panel, "Seleziona Guard e Azione",
+        int result = JOptionPane.showConfirmDialog(null, panel, "Select Guard and Action",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result == JOptionPane.OK_OPTION) {
             String selectedGuard = (String) guardCombo.getSelectedItem();

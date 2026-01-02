@@ -151,7 +151,7 @@ public class PWSEditor extends JFrame {
         // --- New Composite Save/Load for Model + Layout in a Single File ---
 
         // Save All (model and layout)
-        JMenuItem saveAllItem = new JMenuItem("Salva Tutto");
+        JMenuItem saveAllItem = new JMenuItem("Save All");
         saveAllItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             int option = fileChooser.showSaveDialog(PWSEditor.this);
@@ -174,7 +174,7 @@ public class PWSEditor extends JFrame {
         fileMenu.add(saveAllItem);
 
         // Load All (model and layout)
-        JMenuItem loadAllItem = new JMenuItem("Carica Tutto");
+        JMenuItem loadAllItem = new JMenuItem("Load All");
         loadAllItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             int option = fileChooser.showOpenDialog(PWSEditor.this);
@@ -208,7 +208,7 @@ public class PWSEditor extends JFrame {
         fileMenu.add(loadAllItem);
 
         // New: Export as SVG menu item.
-        JMenuItem exportSVGItem = new JMenuItem("Esporta come SVG");
+        JMenuItem exportSVGItem = new JMenuItem("Export as SVG");
         exportSVGItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setFileFilter(
@@ -237,7 +237,7 @@ public class PWSEditor extends JFrame {
         fileMenu.add(exportSVGItem);
 
         // Exit item
-        JMenuItem exitItem = new JMenuItem("Esci");
+        JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.addActionListener(e -> System.exit(0));
         fileMenu.addSeparator();
         fileMenu.add(exitItem);
@@ -245,23 +245,40 @@ public class PWSEditor extends JFrame {
         menuBar.add(fileMenu);
 
         // --- Edit Menu (existing items) ---
-        JMenu editMenu = new JMenu("Modifica");
+        JMenu editMenu = new JMenu("Edit");
 
-        JMenuItem addStateItem = new JMenuItem("Aggiungi Stato");
+        JMenuItem addStateItem = new JMenuItem("Add State");
         addStateItem.addActionListener(e -> {
-            String name = JOptionPane.showInputDialog(PWSEditor.this, "Inserisci il nome dello stato:");
+            String name = JOptionPane.showInputDialog(PWSEditor.this, "Enter state name:");
             if (name != null && !name.trim().isEmpty()) {
-                pwsStateMachine.addState(new PWSState(
-                        name,
-                        new Point(50, 50),
-                        pwsStateMachine.getAssembly()
-                ));
+                // create state at a default top-left, then align its CENTER to the grid if enabled
+                Point defaultTopLeft = new Point(50, 50);
+                PWSState newState = new PWSState(name, defaultTopLeft, pwsStateMachine.getAssembly());
+                pwsStateMachine.addState(newState);
+
+                // Try to align center to grid using the active panel's grid settings
+                try {
+                    PWSStateMachinePanel panel = (PWSStateMachinePanel) ((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+                    if (panel.isSnapToGrid()) {
+                        int grid = panel.getGridSize();
+                        int diameter = 50; // must match StateMachinePanel.DIAMETER
+                        int radius = diameter / 2;
+                        Point center = new Point(defaultTopLeft.x + radius, defaultTopLeft.y + radius);
+                        int snappedCenterX = Math.round(center.x / (float) grid) * grid;
+                        int snappedCenterY = Math.round(center.y / (float) grid) * grid;
+                        Point newTopLeft = new Point(snappedCenterX - radius, snappedCenterY - radius);
+                        newState.setPosition(newTopLeft);
+                    }
+                } catch (ClassCastException ex) {
+                    // If casting fails, ignore snapping and leave default position.
+                }
+
                 baseEditor.getStateMachinePanel().repaint();
             }
         });
         editMenu.add(addStateItem);
 
-        JMenuItem addInitialTransitionItem = new JMenuItem("Aggiungi transizione iniziale");
+        JMenuItem addInitialTransitionItem = new JMenuItem("Add initial transition");
         addInitialTransitionItem.addActionListener(e ->
                 baseEditor.getStateMachinePanel().enableInitialTransitionMode());
         editMenu.add(addInitialTransitionItem);
@@ -295,11 +312,11 @@ public class PWSEditor extends JFrame {
 //        });
 //        editMenu.add(addTransitionItem);
 
-        JMenuItem linkModeItem = new JMenuItem("Crea transizione (modalità collega)");
+        JMenuItem linkModeItem = new JMenuItem("Create transition (link mode)");
         linkModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().enableLinkMode());
         editMenu.add(linkModeItem);
 
-        JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Modalità modifica", true);
+        JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Edit mode", true);
         editModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().setShowControlHandles(editModeItem.isSelected()));
         editMenu.add(editModeItem);
 
@@ -353,6 +370,14 @@ public class PWSEditor extends JFrame {
             }
         });
         viewMenu.add(gridSizeItem);
+
+        // LTL Formula editor for the current assembly
+        JMenuItem ltlEditorItem = new JMenuItem("LTL Editor...");
+        ltlEditorItem.addActionListener(e -> {
+            pws.editor.LTLFormulaEditorDialog dlg = new pws.editor.LTLFormulaEditorDialog(PWSEditor.this, pwsStateMachine.getAssembly());
+            dlg.setVisible(true);
+        });
+        viewMenu.add(ltlEditorItem);
 
         menuBar.add(viewMenu);
         return menuBar;

@@ -57,9 +57,9 @@ public class PWSPanel extends JPanel {
 
         // Pannello di pulsanti per aggiungere, modificare o rimuovere macchine
         JPanel buttonPanel = new JPanel();
-        JButton addButton = new JButton("Aggiungi");
-        JButton editButton = new JButton("Modifica");
-        JButton removeButton = new JButton("Rimuovi");
+        JButton addButton = new JButton("Add");
+        JButton editButton = new JButton("Edit");
+        JButton removeButton = new JButton("Remove");
 
         addButton.addActionListener(e -> onAdd());
         editButton.addActionListener(e -> onEdit());
@@ -81,9 +81,9 @@ public class PWSPanel extends JPanel {
     }
 
     private void onAdd() {
-        String id = JOptionPane.showInputDialog(this, "Inserisci un identificatore univoco:");
+        String id = JOptionPane.showInputDialog(this, "Enter a unique identifier:");
         if (id == null || id.trim().isEmpty()) return;
-        String name = JOptionPane.showInputDialog(this, "Inserisci il nome della macchina:");
+        String name = JOptionPane.showInputDialog(this, "Enter the machine name:");
         if (name == null || name.trim().isEmpty()) return;
 
         // Controlla se esiste già una macchina con lo stesso nome
@@ -110,7 +110,7 @@ public class PWSPanel extends JPanel {
         String selected = machineList.getSelectedValue();
         if (selected == null) return;
         String id = selected.split(" - ")[0];
-        String newName = JOptionPane.showInputDialog(this, "Modifica il nome della macchina:",
+        String newName = JOptionPane.showInputDialog(this, "Edit the machine name:",
                 assembly.getStateMachines().get(id).getName());
         if (newName != null && !newName.trim().isEmpty()){
             assembly.getStateMachines().get(id).setName(newName);
@@ -123,8 +123,8 @@ public class PWSPanel extends JPanel {
         if (selected == null) return;
         String id = selected.split(" - ")[0];
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Sei sicuro di voler rimuovere la macchina con identificatore " + id + "?",
-                "Conferma", JOptionPane.YES_NO_OPTION);
+                "Are you sure you want to remove the machine with identifier " + id + "?",
+                "Confirm", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             // Rimuove solo il mapping corrispondente all'id selezionato
             assembly.getStateMachines().remove(id);

@@ -31,7 +31,7 @@ public class SVGExporter {
         }
         StringSelection selection = new StringSelection(svgContent);
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
-        JOptionPane.showMessageDialog(panel, "SVG esportato negli appunti.");
+        JOptionPane.showMessageDialog(panel, "SVG exported to clipboard.");
     }
 
     public static void exportPanelToSVGFile(JPanel panel, File file) {
@@ -49,7 +49,7 @@ public class SVGExporter {
             svgGenerator.stream(writer, true);
         } catch (IOException ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(panel, "Errore nel salvataggio del file SVG: " + ex.getMessage());
+            JOptionPane.showMessageDialog(panel, "Error saving SVG file: " + ex.getMessage());
         }
     }
 }
