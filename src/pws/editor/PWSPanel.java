@@ -80,6 +80,7 @@ public class PWSPanel extends JPanel {
     // Callback interface to notify when a machine is selected (double-clicked)
     public interface MachineSelectionListener {
         void machineSelected(String id);
+        void machineRemoved(String id);
     }
 
     private MachineSelectionListener selectionListener = null;
@@ -143,6 +144,9 @@ public class PWSPanel extends JPanel {
         if (confirm == JOptionPane.YES_OPTION) {
             // Rimuove solo il mapping corrispondente all'id selezionato
             assembly.getStateMachines().remove(id);
+            if (selectionListener != null) {
+                selectionListener.machineRemoved(id);
+            }
             refreshList();
         }
     }

@@ -36,6 +36,8 @@ public class PWSEditor extends JFrame {
     private PWSPanel assemblyPanel;         // Panel to manage the Assembly
     private JTabbedPane tabbedPane;         // Panel to switch between baseEditor and assemblyPanel
     private StateMachineEditor embeddedEditor = null; // single reusable embedded editor for assembly machines
+    private JPanel machineEditorContainer; // promoted so removal callback can clear it
+    private String embeddedMachineId = null;
 
     // The main PWSEditor window uses a fixed title, e.g. "PWSEditor"
     public PWSEditor(PWSStateMachine machine) {
@@ -52,74 +54,111 @@ public class PWSEditor extends JFrame {
     private void initComponents() {
         setJMenuBar(createMenuBar());
 
-        // Create a specialized editor using PWSStateMachineEditor and a custom title (here "PWSMachine").
+        // Left editor area (wrapped with a header)
         baseEditor = new PWSStateMachineEditor(pwsStateMachine, "PWSMachine");
-        JPanel editorPanel = new JPanel(new BorderLayout());
-        editorPanel.add(baseEditor.getContentPane(), BorderLayout.CENTER);
+        JPanel editorInner = new JPanel(new BorderLayout());
+        editorInner.add(baseEditor.getContentPane(), BorderLayout.CENTER);
 
+        JPanel leftWrapper = new JPanel(new BorderLayout());
+        JLabel leftHeader = new JLabel("Controller", SwingConstants.CENTER);
+        leftHeader.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        leftHeader.setFont(leftHeader.getFont().deriveFont(Font.BOLD));
+        leftWrapper.add(leftHeader, BorderLayout.NORTH);
+        leftWrapper.add(editorInner, BorderLayout.CENTER);
+
+        // Right area: assembly list + embedded machine editor container (also with header)
         assemblyPanel = new PWSPanel(pwsStateMachine.getAssembly());
 
-        // Create a right-side panel that contains the assembly list and an embedded editor
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.add(assemblyPanel, BorderLayout.NORTH);
+        JPanel rightTop = new JPanel(new BorderLayout());
+        JLabel rightHeader = new JLabel("Assembly", SwingConstants.CENTER);
+        rightHeader.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        rightHeader.setFont(rightHeader.getFont().deriveFont(Font.BOLD));
+        rightTop.add(rightHeader, BorderLayout.NORTH);
+        rightTop.add(assemblyPanel, BorderLayout.CENTER);
 
-        JPanel machineEditorContainer = new JPanel(new BorderLayout());
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.add(rightTop, BorderLayout.NORTH);
+
+        machineEditorContainer = new JPanel(new BorderLayout());
         // Placeholder label until a machine is selected
         JLabel placeholder = new JLabel("Select an assembly machine to edit", SwingConstants.CENTER);
         machineEditorContainer.add(placeholder, BorderLayout.CENTER);
 
         rightPanel.add(machineEditorContainer, BorderLayout.CENTER);
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, editorPanel, rightPanel);
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftWrapper, rightPanel);
         split.setResizeWeight(0.7);
         getContentPane().add(split, BorderLayout.CENTER);
 
         // Wire selection from the assembly panel to show the selected machine in the embedded editor
-        assemblyPanel.setMachineSelectionListener(id -> {
-            StateMachine machine = pwsStateMachine.getAssembly().getStateMachines().get(id);
-            if (machine != null) {
-                SwingUtilities.invokeLater(() -> {
-                    machineEditorContainer.removeAll();
-                    try {
-                        String title = id + " : " + (machine.getName() != null ? machine.getName() : "");
-                        if (embeddedEditor == null) {
-                            embeddedEditor = new StateMachineEditor(machine, pwsStateMachine.getAssembly(), title);
-                        } else {
-                            embeddedEditor.bindStateMachine(machine);
-                        }
-
-                        JMenuBar mb = embeddedEditor.getJMenuBar();
-                        StateMachinePanel smPanel = embeddedEditor.getStateMachinePanel();
-
-                        JPanel wrapper = new JPanel(new BorderLayout());
-                        JPanel topArea = new JPanel(new BorderLayout());
-                        if (mb != null) topArea.add(mb, BorderLayout.NORTH);
-                        JLabel header = new JLabel(title, SwingConstants.CENTER);
-                        header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-                        header.setFont(header.getFont().deriveFont(Font.BOLD));
-                        topArea.add(header, BorderLayout.SOUTH);
-
-                        wrapper.add(topArea, BorderLayout.NORTH);
-                        wrapper.add(smPanel, BorderLayout.CENTER);
-
-                        machineEditorContainer.add(wrapper, BorderLayout.CENTER);
-                        machineEditorContainer.revalidate();
-                        machineEditorContainer.repaint();
-                    } catch (Exception ex) {
+        assemblyPanel.setMachineSelectionListener(new pws.editor.PWSPanel.MachineSelectionListener() {
+            @Override
+            public void machineSelected(String id) {
+                StateMachine machine = pwsStateMachine.getAssembly().getStateMachines().get(id);
+                if (machine != null) {
+                    SwingUtilities.invokeLater(() -> {
                         machineEditorContainer.removeAll();
-                        JPanel wrapper = new JPanel(new BorderLayout());
-                        String title = id + " : " + (machine.getName() != null ? machine.getName() : "");
-                        JLabel header = new JLabel(title, SwingConstants.CENTER);
-                        header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-                        header.setFont(header.getFont().deriveFont(Font.BOLD));
-                        wrapper.add(header, BorderLayout.NORTH);
-                        StateMachinePanel smPanel = new StateMachinePanel(machine);
-                        wrapper.add(smPanel, BorderLayout.CENTER);
-                        machineEditorContainer.add(wrapper, BorderLayout.CENTER);
-                        machineEditorContainer.revalidate();
-                        machineEditorContainer.repaint();
-                    }
-                });
+                        try {
+                            String title = id + " : " + (machine.getName() != null ? machine.getName() : "");
+                            if (embeddedEditor == null) {
+                                embeddedEditor = new StateMachineEditor(machine, pwsStateMachine.getAssembly(), title);
+                            } else {
+                                embeddedEditor.bindStateMachine(machine);
+                            }
+
+                            // remember which id is currently embedded
+                            embeddedMachineId = id;
+
+                            JMenuBar mb = embeddedEditor.getJMenuBar();
+                            StateMachinePanel smPanel = embeddedEditor.getStateMachinePanel();
+
+                            JPanel wrapper = new JPanel(new BorderLayout());
+                            JPanel topArea = new JPanel(new BorderLayout());
+                            if (mb != null) topArea.add(mb, BorderLayout.NORTH);
+                            JLabel header = new JLabel(title, SwingConstants.CENTER);
+                            header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+                            header.setFont(header.getFont().deriveFont(Font.BOLD));
+                            topArea.add(header, BorderLayout.SOUTH);
+
+                            wrapper.add(topArea, BorderLayout.NORTH);
+                            wrapper.add(smPanel, BorderLayout.CENTER);
+
+                            machineEditorContainer.add(wrapper, BorderLayout.CENTER);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        } catch (Exception ex) {
+                            machineEditorContainer.removeAll();
+                            JPanel wrapper = new JPanel(new BorderLayout());
+                            String title = id + " : " + (machine.getName() != null ? machine.getName() : "");
+                            JLabel header = new JLabel(title, SwingConstants.CENTER);
+                            header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+                            header.setFont(header.getFont().deriveFont(Font.BOLD));
+                            wrapper.add(header, BorderLayout.NORTH);
+                            StateMachinePanel smPanel = new StateMachinePanel(machine);
+                            wrapper.add(smPanel, BorderLayout.CENTER);
+                            machineEditorContainer.add(wrapper, BorderLayout.CENTER);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void machineRemoved(String id) {
+                // If the removed machine is currently embedded, clear the right editor area
+                if (id != null && id.equals(embeddedMachineId)) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (machineEditorContainer != null) {
+                            machineEditorContainer.removeAll();
+                            JLabel placeholder = new JLabel("Select an assembly machine to edit", SwingConstants.CENTER);
+                            machineEditorContainer.add(placeholder, BorderLayout.CENTER);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        }
+                        embeddedMachineId = null;
+                    });
+                }
             }
         });
     }
