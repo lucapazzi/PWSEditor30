@@ -377,6 +377,8 @@ public class PWSEditor extends JFrame {
             pws.editor.LTLFormulaEditorDialog dlg = new pws.editor.LTLFormulaEditorDialog(PWSEditor.this, pwsStateMachine.getAssembly());
             dlg.setVisible(true);
         });
+        // Disabled by default (grayed out)
+        ltlEditorItem.setEnabled(false);
         viewMenu.add(ltlEditorItem);
 
         menuBar.add(viewMenu);

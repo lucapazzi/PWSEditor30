@@ -465,12 +465,16 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             return;
         }
 
-        // Snap states and control points to grid on release
+        // Snap states and control points to grid on release (snap using state center)
         if (snapToGrid) {
             if (selectedState != null) {
                 State st = (State) selectedState;
                 Point pos = st.getPosition();
-                st.setPosition(snap(pos));
+                int d = st.getName().equals("PseudoState") ? PSEUDO_DIAMETER : DIAMETER;
+                int r = d / 2;
+                Point center = new Point(pos.x + r, pos.y + r);
+                Point snappedCenter = snap(center);
+                st.setPosition(new Point(snappedCenter.x - r, snappedCenter.y - r));
             }
             if (selectedTransitionForControl != null) {
                 Transition tr = (Transition) selectedTransitionForControl;
