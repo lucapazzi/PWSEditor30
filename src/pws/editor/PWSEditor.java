@@ -35,6 +35,7 @@ public class PWSEditor extends JFrame {
     private StateMachineEditor baseEditor;  // Editor for the current state machine
     private PWSPanel assemblyPanel;         // Panel to manage the Assembly
     private JTabbedPane tabbedPane;         // Panel to switch between baseEditor and assemblyPanel
+    private StateMachineEditor embeddedEditor = null; // single reusable embedded editor for assembly machines
 
     // The main PWSEditor window uses a fixed title, e.g. "PWSEditor"
     public PWSEditor(PWSStateMachine machine) {
@@ -58,33 +59,67 @@ public class PWSEditor extends JFrame {
 
         assemblyPanel = new PWSPanel(pwsStateMachine.getAssembly());
 
-        tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("Editor", editorPanel);
-        tabbedPane.addTab("Assembly", assemblyPanel);
-        /* ---- Disable default LEFT / RIGHT navigation of JTabbedPane ---- */
-        InputMap imDefault = tabbedPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        imDefault.put(KeyStroke.getKeyStroke("LEFT"),  "none");
-        imDefault.put(KeyStroke.getKeyStroke("RIGHT"), "none");
+        // Create a right-side panel that contains the assembly list and an embedded editor
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.add(assemblyPanel, BorderLayout.NORTH);
 
-        getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        JPanel machineEditorContainer = new JPanel(new BorderLayout());
+        // Placeholder label until a machine is selected
+        JLabel placeholder = new JLabel("Select an assembly machine to edit", SwingConstants.CENTER);
+        machineEditorContainer.add(placeholder, BorderLayout.CENTER);
 
-        /* ---------- Arrow‑key tab switching ---------- */
-        InputMap im = tabbedPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        ActionMap am = tabbedPane.getActionMap();
+        rightPanel.add(machineEditorContainer, BorderLayout.CENTER);
 
-        im.put(KeyStroke.getKeyStroke("alt LEFT"),  "prevTab");
-        im.put(KeyStroke.getKeyStroke("alt RIGHT"), "nextTab");
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, editorPanel, rightPanel);
+        split.setResizeWeight(0.7);
+        getContentPane().add(split, BorderLayout.CENTER);
 
-        am.put("prevTab", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent e) {
-                int idx = tabbedPane.getSelectedIndex();
-                if (idx > 0) tabbedPane.setSelectedIndex(idx - 1);
-            }
-        });
-        am.put("nextTab", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent e) {
-                int idx = tabbedPane.getSelectedIndex();
-                if (idx < tabbedPane.getTabCount() - 1) tabbedPane.setSelectedIndex(idx + 1);
+        // Wire selection from the assembly panel to show the selected machine in the embedded editor
+        assemblyPanel.setMachineSelectionListener(id -> {
+            StateMachine machine = pwsStateMachine.getAssembly().getStateMachines().get(id);
+            if (machine != null) {
+                SwingUtilities.invokeLater(() -> {
+                    machineEditorContainer.removeAll();
+                    try {
+                        String title = id + " : " + (machine.getName() != null ? machine.getName() : "");
+                        if (embeddedEditor == null) {
+                            embeddedEditor = new StateMachineEditor(machine, pwsStateMachine.getAssembly(), title);
+                        } else {
+                            embeddedEditor.bindStateMachine(machine);
+                        }
+
+                        JMenuBar mb = embeddedEditor.getJMenuBar();
+                        StateMachinePanel smPanel = embeddedEditor.getStateMachinePanel();
+
+                        JPanel wrapper = new JPanel(new BorderLayout());
+                        JPanel topArea = new JPanel(new BorderLayout());
+                        if (mb != null) topArea.add(mb, BorderLayout.NORTH);
+                        JLabel header = new JLabel(title, SwingConstants.CENTER);
+                        header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+                        header.setFont(header.getFont().deriveFont(Font.BOLD));
+                        topArea.add(header, BorderLayout.SOUTH);
+
+                        wrapper.add(topArea, BorderLayout.NORTH);
+                        wrapper.add(smPanel, BorderLayout.CENTER);
+
+                        machineEditorContainer.add(wrapper, BorderLayout.CENTER);
+                        machineEditorContainer.revalidate();
+                        machineEditorContainer.repaint();
+                    } catch (Exception ex) {
+                        machineEditorContainer.removeAll();
+                        JPanel wrapper = new JPanel(new BorderLayout());
+                        String title = id + " : " + (machine.getName() != null ? machine.getName() : "");
+                        JLabel header = new JLabel(title, SwingConstants.CENTER);
+                        header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+                        header.setFont(header.getFont().deriveFont(Font.BOLD));
+                        wrapper.add(header, BorderLayout.NORTH);
+                        StateMachinePanel smPanel = new StateMachinePanel(machine);
+                        wrapper.add(smPanel, BorderLayout.CENTER);
+                        machineEditorContainer.add(wrapper, BorderLayout.CENTER);
+                        machineEditorContainer.revalidate();
+                        machineEditorContainer.repaint();
+                    }
+                });
             }
         });
     }
@@ -96,7 +131,7 @@ public class PWSEditor extends JFrame {
         JMenu fileMenu = new JMenu("File");
 
 //        // Save model item (existing)
-//        JMenuItem saveItem = new JMenuItem("Salva");
+//        JMenuItem saveItem = new JMenuItem("Save");
 //        saveItem.addActionListener(e -> {
 //            JFileChooser fileChooser = new JFileChooser();
 //            int option = fileChooser.showSaveDialog(PWSEditor.this);
@@ -104,17 +139,17 @@ public class PWSEditor extends JFrame {
 //                String filename = fileChooser.getSelectedFile().getAbsolutePath();
 //                try {
 //                    BinaryModelSerializer.saveModel(pwsStateMachine, filename);
-//                    JOptionPane.showMessageDialog(PWSEditor.this, "Modello salvato correttamente.");
+//                    JOptionPane.showMessageDialog(PWSEditor.this, "Model saved successfully.");
 //                } catch (IOException ex) {
 //                    ex.printStackTrace();
-//                    JOptionPane.showMessageDialog(PWSEditor.this, "Errore durante il salvataggio: " + ex.getMessage());
+//                    JOptionPane.showMessageDialog(PWSEditor.this, "Error saving: " + ex.getMessage());
 //                }
 //            }
 //        });
 //        fileMenu.add(saveItem);
 //
 //        // Load model item (existing)
-//        JMenuItem loadItem = new JMenuItem("Carica");
+//        JMenuItem loadItem = new JMenuItem("Load");
 //        loadItem.addActionListener(e -> {
 //            JFileChooser fileChooser = new JFileChooser();
 //            int option = fileChooser.showOpenDialog(PWSEditor.this);
@@ -136,13 +171,13 @@ public class PWSEditor extends JFrame {
 //
 //                        revalidate();
 //                        repaint();
-//                        JOptionPane.showMessageDialog(PWSEditor.this, "Modello caricato correttamente.");
+//                        JOptionPane.showMessageDialog(PWSEditor.this, "Model loaded successfully.");
 //                    } else {
-//                        JOptionPane.showMessageDialog(PWSEditor.this, "Il file selezionato non contiene un modello valido.");
+//                        JOptionPane.showMessageDialog(PWSEditor.this, "The selected file does not contain a valid model.");
 //                    }
 //                } catch (IOException | ClassNotFoundException ex) {
 //                    ex.printStackTrace();
-//                    JOptionPane.showMessageDialog(PWSEditor.this, "Errore durante il caricamento: " + ex.getMessage());
+//                    JOptionPane.showMessageDialog(PWSEditor.this, "Error loading: " + ex.getMessage());
 //                }
 //            }
 //        });
@@ -164,10 +199,10 @@ public class PWSEditor extends JFrame {
                     // Note: Ensure that PWSStateMachinePanel has the method saveAnnotationsToStream.
                     ((PWSStateMachinePanel) baseEditor.getStateMachinePanel()).saveAnnotationsToStream(oos);
                     oos.flush();
-                    JOptionPane.showMessageDialog(PWSEditor.this, "Modello e layout salvati correttamente.");
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Model and layout saved successfully.");
                 } catch (IOException ex) {
                     ex.printStackTrace();
-                    JOptionPane.showMessageDialog(PWSEditor.this, "Errore durante il salvataggio: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Error saving: " + ex.getMessage());
                 }
             }
         });
@@ -195,13 +230,13 @@ public class PWSEditor extends JFrame {
                         ((PWSStateMachinePanel) baseEditor.getStateMachinePanel()).loadAnnotationsFromStream(ois);
                         revalidate();
                         repaint();
-                        JOptionPane.showMessageDialog(PWSEditor.this, "Modello e layout caricati correttamente.");
+                        JOptionPane.showMessageDialog(PWSEditor.this, "Model and layout loaded successfully.");
                     } else {
-                        JOptionPane.showMessageDialog(PWSEditor.this, "Il file selezionato non contiene dati validi.");
+                        JOptionPane.showMessageDialog(PWSEditor.this, "The selected file does not contain valid data.");
                     }
                 } catch (IOException | ClassNotFoundException ex) {
                     ex.printStackTrace();
-                    JOptionPane.showMessageDialog(PWSEditor.this, "Errore durante il caricamento: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Error loading: " + ex.getMessage());
                 }
             }
         });
@@ -211,8 +246,8 @@ public class PWSEditor extends JFrame {
         JMenuItem exportSVGItem = new JMenuItem("Export as SVG");
         exportSVGItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(
-                    new javax.swing.filechooser.FileNameExtensionFilter("File SVG", "svg"));
+                fileChooser.setFileFilter(
+                    new javax.swing.filechooser.FileNameExtensionFilter("SVG File", "svg"));
 
             if (fileChooser.showSaveDialog(PWSEditor.this)
                     == JFileChooser.APPROVE_OPTION) {
@@ -231,7 +266,7 @@ public class PWSEditor extends JFrame {
                 SVGExporter.exportPanelToSVGFile(panel, file);
 
                 JOptionPane.showMessageDialog(PWSEditor.this,
-                        "File SVG salvato correttamente.");
+                    "SVG file saved successfully.");
             }
         });
         fileMenu.add(exportSVGItem);

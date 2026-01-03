@@ -111,8 +111,8 @@ public class StateMachineEditor extends JFrame {
 
 // --- Then the existing Exit menu item follows ---
 
-        JMenuItem exitItem = new JMenuItem("Exit");
-        exitItem.addActionListener(e -> System.exit(0));
+        JMenuItem exitItem = new JMenuItem("Close");
+        exitItem.addActionListener(e -> StateMachineEditor.this.dispose());
         fileMenu.add(loadMachineItem);
         fileMenu.add(saveMachineItem);
         fileMenu.addSeparator();
@@ -241,5 +241,16 @@ public class StateMachineEditor extends JFrame {
 
     public void setStateMachine(PWSStateMachine stateMachine) {
         this.stateMachine = stateMachine;
+        if (this.statePanel != null) this.statePanel.setStateMachine(stateMachine);
+    }
+
+    // Generic binder for machinery.StateMachine instances so external callers can swap the edited machine.
+    public void bindStateMachine(StateMachine sm) {
+        this.stateMachine = sm;
+        if (this.statePanel != null) this.statePanel.setStateMachine(sm);
+        if (this.statePanel != null) {
+            this.statePanel.revalidate();
+            this.statePanel.repaint();
+        }
     }
 }

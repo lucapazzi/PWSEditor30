@@ -559,7 +559,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 System.out.println("Link mode: Source state selected: " + transitionSourceState.getName());
             } else {
                 if (clickedState != transitionSourceState) {
-                    String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave blank for internal):");
+                    String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave blank for autonomous):");
                     boolean autonomous = transitionSourceState.getName().equals("PseudoState") ||
                             (trigger == null || trigger.trim().isEmpty());
                     PWSTransition newTransition = new PWSTransition(transitionSourceState, clickedState, autonomous, trigger,((PWSStateMachine)stateMachine).getAssembly());

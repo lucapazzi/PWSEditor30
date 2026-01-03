@@ -26,7 +26,8 @@ public class PWSPanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(machineList);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Listener per il doppio click: lancia un nuovo editor con titolo "id : M"
+        // Listener per il doppio click: notifica il listener di selezione (se presente),
+        // altrimenti apre un nuovo editor in finestra (comportamento legacy).
         machineList.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -40,14 +41,18 @@ public class PWSPanel extends JPanel {
                             String machineName = parts[1];
                             StateMachine machine = assembly.getStateMachines().get(id);
                             if (machine != null) {
-                                SwingUtilities.invokeLater(() -> {
-                                    // Usa il nuovo costruttore di StateMachineEditor che accetta titolo
-                                    StateMachineEditor editor = new StateMachineEditor(machine, assembly, id + " : " + machineName);
-                                    editor.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-                                    editor.setSize(800, 600);
-                                    editor.setLocationRelativeTo(null);
-                                    editor.setVisible(true);
-                                });
+                                if (selectionListener != null) {
+                                    selectionListener.machineSelected(id);
+                                } else {
+                                    SwingUtilities.invokeLater(() -> {
+                                        // Fallback: apri editor in finestra separata
+                                        StateMachineEditor editor = new StateMachineEditor(machine, assembly, id + " : " + machineName);
+                                        editor.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                                        editor.setSize(800, 600);
+                                        editor.setLocationRelativeTo(null);
+                                        editor.setVisible(true);
+                                    });
+                                }
                             }
                         }
                     }
@@ -70,6 +75,17 @@ public class PWSPanel extends JPanel {
         buttonPanel.add(removeButton);
 
         add(buttonPanel, BorderLayout.SOUTH);
+    }
+
+    // Callback interface to notify when a machine is selected (double-clicked)
+    public interface MachineSelectionListener {
+        void machineSelected(String id);
+    }
+
+    private MachineSelectionListener selectionListener = null;
+
+    public void setMachineSelectionListener(MachineSelectionListener l) {
+        this.selectionListener = l;
     }
 
     public void refreshList() {
@@ -110,10 +126,9 @@ public class PWSPanel extends JPanel {
         String selected = machineList.getSelectedValue();
         if (selected == null) return;
         String id = selected.split(" - ")[0];
-        String newName = JOptionPane.showInputDialog(this, "Edit the machine name:",
-                assembly.getStateMachines().get(id).getName());
-        if (newName != null && !newName.trim().isEmpty()){
-            assembly.getStateMachines().get(id).setName(newName);
+        AssemblyMachineEditDialog dlg = new AssemblyMachineEditDialog(SwingUtilities.getWindowAncestor(this), assembly, id);
+        dlg.setVisible(true);
+        if (dlg.isConfirmed()) {
             refreshList();
         }
     }

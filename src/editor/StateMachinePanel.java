@@ -566,7 +566,7 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                 System.out.println("Link mode: Source state selected: " + transitionSourceState.getName());
             } else {
                 if (clickedState != transitionSourceState) {
-                    String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave blank for internal):");
+                    String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave blank for autonomous):");
                     boolean autonomous = transitionSourceState.getName().equals("PseudoState") ||
                             (trigger == null || trigger.trim().isEmpty());
                     TransitionInterface newTransition = new Transition(transitionSourceState, clickedState, autonomous, trigger);
@@ -637,8 +637,8 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             deleteItem.addActionListener(ae -> {
                 System.out.println("Delete menu item clicked for state: " + state.getName());
                 int confirm = JOptionPane.showConfirmDialog(this,
-                        "Are you sure to delete state: " + state.getName() + "\"?",
-                        "Conferma cancellazione", JOptionPane.YES_NO_OPTION);
+                    "Are you sure you want to delete state: " + state.getName() + "?",
+                    "Confirm deletion", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     boolean removed = stateMachine.getStates().remove(state);
                     if (removed) {
