@@ -14,6 +14,12 @@ public class StateMachineEditor extends JFrame {
     protected StateMachine stateMachine;
     protected StateMachinePanel statePanel;
     protected Assembly assembly;
+    private Runnable closeCallback = null;
+
+    // Callback interface for close requests
+    public void setCloseCallback(Runnable callback) {
+        this.closeCallback = callback;
+    }
 
     // Default constructor (uses title "StateMachine Editor")
     public StateMachineEditor(StateMachine stateMachine, String title) {
@@ -111,8 +117,14 @@ public class StateMachineEditor extends JFrame {
 
 // --- Then the existing Exit menu item follows ---
 
-        JMenuItem exitItem = new JMenuItem("Close");
-        exitItem.addActionListener(e -> StateMachineEditor.this.dispose());
+        JMenuItem closeEditorItem = new JMenuItem("Close Editor");
+        closeEditorItem.addActionListener(e -> {
+            if (closeCallback != null) {
+                closeCallback.run();
+            } else {
+                StateMachineEditor.this.dispose();
+            }
+        });
         fileMenu.add(loadMachineItem);
         fileMenu.add(saveMachineItem);
         fileMenu.addSeparator();
@@ -138,7 +150,7 @@ public class StateMachineEditor extends JFrame {
             }
         });
         fileMenu.add(exportSVGItem);
-        fileMenu.add(exitItem);
+        fileMenu.add(closeEditorItem);
         menuBar.add(fileMenu);
 
         // Edit Menu

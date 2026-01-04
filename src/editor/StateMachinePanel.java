@@ -184,10 +184,12 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                     Point p2 = computeEndPoint(centerTarget, cp, targetCenterOffset);
                     int defaultX = (int) ((p0.x + 2 * cp.x + p2.x) / 4.0) + 5;
                     int defaultY = (int) ((p0.y + 2 * cp.y + p2.y) / 4.0) - 5;
+                    // Add to parent first, then revalidate to allow proper size calculation
+                    add(label);
+                    label.setVisible(true);
+                    label.revalidate();
                     Dimension size = label.getPreferredSize();
                     label.setBounds(defaultX, defaultY, size.width, size.height);
-                    label.setVisible(true);
-                    add(label);
                     triggerLabels.put(t, label);
                 } else {
                     // Update text in case it changed.

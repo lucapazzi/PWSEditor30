@@ -10,12 +10,18 @@ import java.util.*;
 public class Assembly implements AssemblyInterface {
     private String assemblyId;
     private Map<String, StateMachine> stateMachines;
+    // Repository of reusable machines (machineKey -> StateMachine)
+    private MachineLibrary machineLibrary = new MachineLibrary();
     // Optional storage for LTL formulas associated with this assembly
     private java.util.List<LTLFormula> ltlFormulas = new java.util.ArrayList<>();
 
     public Assembly(String assemblyId) {
         this.assemblyId = assemblyId;
         stateMachines = new LinkedHashMap<>();
+    }
+
+    public MachineLibrary getMachineLibrary() {
+        return machineLibrary;
     }
 
     @Override

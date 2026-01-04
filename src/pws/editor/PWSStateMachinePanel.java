@@ -684,7 +684,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         if (state instanceof PWSState && ((PWSState) state).isPseudoState()) {
             PWSState pwsState = (PWSState) state;
             // Usa un menu item di toggle per il pseudostato
-            String toggleText = pwsState.isAnnotationVisible() ? "Hide annotation" : "Show annotation";
+            String toggleText = pwsState.isAnnotationVisible() ? "Hide dashboard" : "Show dashboard";
             JMenuItem toggleAnnotItem = new JMenuItem(toggleText);
             toggleAnnotItem.addActionListener(ae -> {
                 if (!pwsState.isAnnotationVisible()) {
@@ -745,9 +745,9 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 PWSState pwsState = (PWSState) state;
                 JMenuItem toggleAnnot;
                 if (pwsState.isAnnotationVisible()) {
-                    toggleAnnot = new JMenuItem("Hide Annotation");
+                    toggleAnnot = new JMenuItem("Hide Dashboard");
                 } else {
-                    toggleAnnot = new JMenuItem("Show Annotation");
+                    toggleAnnot = new JMenuItem("Show Dashboard");
                 }
                 toggleAnnot.addActionListener(ae -> {
                     boolean newVisible = !pwsState.isAnnotationVisible();
