@@ -20,7 +20,7 @@ public class PWSStateMachineEditor extends StateMachineEditor {
         // Crea una toolbar per aggiungere il pulsante "Aggiorna semantica"
         JPanel toolbar = new JPanel();
         toolbar.setLayout(new FlowLayout(FlowLayout.LEFT));
-        JButton updateSemanticButton = new JButton("Update semantics");
+        JButton updateSemanticButton = new JButton("Least Fixpoint");
         updateSemanticButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

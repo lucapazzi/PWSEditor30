@@ -367,18 +367,22 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
      * Shift every state position and transition control point by the given delta.
      */
     private void translateAllStates(int dx, int dy) {
+        // Treat dx/dy as grid steps; convert to pixels using current grid size
+        int px = dx * gridSize;
+        int py = dy * gridSize;
+
         for (StateInterface s : stateMachine.getStates()) {
             State st = (State) s;
             // Move state position
             Point pos = st.getPosition();
-            st.setPosition(new Point(pos.x + dx, pos.y + dy));
+            st.setPosition(new Point(pos.x + px, pos.y + py));
 
             /* ---- Move state‑level annotations if present ---- */
             // Works only if we’re in a PWS environment, but safe to attempt cast
             if (st instanceof pws.PWSState pwsSt) {
                 if (pwsSt.getAnnotation() != null) {
                     Rectangle r = pwsSt.getAnnotation().getBounds();
-                    pwsSt.getAnnotation().setBounds(r.x + dx, r.y + dy, r.width, r.height);
+                    pwsSt.getAnnotation().setBounds(r.x + px, r.y + py, r.width, r.height);
                 }
             }
         }
@@ -387,12 +391,12 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             Transition tr = (Transition) t;
             // Move Bézier control point
             Point cp = tr.getControlPoint();
-            if (cp != null) cp.translate(dx, dy);
+            if (cp != null) cp.translate(px, py);
 
             // Move trigger label offset (for draggable trigger labels)
             if (t.getTriggerOffset() != null) {
                 Point off = t.getTriggerOffset();
-                t.setTriggerOffset(new Point(off.x + dx, off.y + dy));
+                t.setTriggerOffset(new Point(off.x + px, off.y + py));
             }
 
             /* ---- Move transition‑level annotations if present ---- */
@@ -400,17 +404,17 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                 // Guard annotation
                 if (pwt.getGuardAnnotation() != null) {
                     Rectangle r = pwt.getGuardAnnotation().getBounds();
-                    pwt.getGuardAnnotation().setBounds(r.x + dx, r.y + dy, r.width, r.height);
+                    pwt.getGuardAnnotation().setBounds(r.x + px, r.y + py, r.width, r.height);
                 }
                 // Action annotation
                 if (pwt.getActionAnnotation() != null) {
                     Rectangle r = pwt.getActionAnnotation().getBounds();
-                    pwt.getActionAnnotation().setBounds(r.x + dx, r.y + dy, r.width, r.height);
+                    pwt.getActionAnnotation().setBounds(r.x + px, r.y + py, r.width, r.height);
                 }
                 // Transition semantics annotation
                 if (pwt.getSemanticsAnnotation() != null) {
                     Rectangle r = pwt.getSemanticsAnnotation().getBounds();
-                    pwt.getSemanticsAnnotation().setBounds(r.x + dx, r.y + dy, r.width, r.height);
+                    pwt.getSemanticsAnnotation().setBounds(r.x + px, r.y + py, r.width, r.height);
                 }
             }
         }

@@ -538,6 +538,14 @@ public class PWSEditor extends JFrame {
                             }
                         }
 
+                        // Ensure state dashboards (annotations) are visible after loading
+                        try {
+                            PWSStateMachinePanel panel = (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+                            panel.setShowStateAnnotations(true);
+                            panel.repaint();
+                        } catch (Exception ex) {
+                            // ignore
+                        }
                         getContentPane().revalidate();
                         getContentPane().repaint();
                         JOptionPane.showMessageDialog(PWSEditor.this, "Model, library and layout loaded successfully.");
@@ -734,18 +742,27 @@ public class PWSEditor extends JFrame {
 
         menuBar.add(editMenu);
 
-        // --- View menu: toggle state annotations ---
+        // --- View menu: toggle state dashboards ---
         JMenu viewMenu = new JMenu("View");
-        JCheckBoxMenuItem showStateAnn = new JCheckBoxMenuItem("Show State Annotations", false);
+        JCheckBoxMenuItem showStateAnn = new JCheckBoxMenuItem("Show state dashboards", true);
         showStateAnn.addActionListener(e -> {
             boolean show = showStateAnn.isSelected();
-            // Retrieve the PWSStateMachinePanel and toggle annotations
+            // Retrieve the PWSStateMachinePanel and toggle annotations/dashboards
             PWSStateMachinePanel panel =
                 (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
             panel.setShowStateAnnotations(show);
             panel.repaint();
         });
         viewMenu.add(showStateAnn);
+
+        // Ensure dashboards are visible at startup
+        try {
+            PWSStateMachinePanel panel = (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+            panel.setShowStateAnnotations(true);
+            panel.repaint();
+        } catch (Exception ex) {
+            // Ignore if panel is not yet ready
+        }
 
         JCheckBoxMenuItem showGridItem = new JCheckBoxMenuItem("Show grid", true);
         showGridItem.addActionListener(e -> {

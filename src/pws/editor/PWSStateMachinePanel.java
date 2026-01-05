@@ -20,6 +20,7 @@ import smalgebra.SMProposition;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
+import java.awt.event.HierarchyEvent;
 import java.awt.font.TextAttribute;
 import java.awt.geom.Point2D;
 import java.awt.geom.QuadCurve2D;
@@ -47,7 +48,12 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         setLayout(null);
         // Enable keyboard focus so arrow keys translate the whole diagram
         setFocusable(true);
-        requestFocusInWindow();
+        // Ensure we request focus once the panel becomes showing (fixes embedded controller editor focus)
+        addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing()) {
+                requestFocusInWindow();
+            }
+        });
         // Mouse listeners are inherited from StateMachinePanel.
     }
 
@@ -650,7 +656,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             popup.add(toggleActionItem);
 
             // Toggle per la Transition Semantics Annotation
-            JMenuItem toggleSemanticsItem = new JMenuItem("Toggle Semantics Annotation");
+            JMenuItem toggleSemanticsItem = new JMenuItem("Toggle Semantics contribution");
             toggleSemanticsItem.addActionListener(ae -> {
                 if (pt.getSemanticsAnnotation() != null) {
                     pt.getSemanticsAnnotation().setVisible(!pt.getSemanticsAnnotation().isVisible());
