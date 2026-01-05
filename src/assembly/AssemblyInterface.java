@@ -22,4 +22,8 @@ public interface AssemblyInterface extends Serializable {
 
     List<BasicStateProposition> getAssemblyGuards();
     List<Action> getAssemblyActions();
+        // LTL formula storage (optional)
+        java.util.List<LTLFormula> getLTLFormulas();
+        void addLTLFormula(LTLFormula f);
+        void removeLTLFormula(LTLFormula f);
 }

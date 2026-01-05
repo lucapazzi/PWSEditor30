@@ -184,10 +184,12 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                     Point p2 = computeEndPoint(centerTarget, cp, targetCenterOffset);
                     int defaultX = (int) ((p0.x + 2 * cp.x + p2.x) / 4.0) + 5;
                     int defaultY = (int) ((p0.y + 2 * cp.y + p2.y) / 4.0) - 5;
+                    // Add to parent first, then revalidate to allow proper size calculation
+                    add(label);
+                    label.setVisible(true);
+                    label.revalidate();
                     Dimension size = label.getPreferredSize();
                     label.setBounds(defaultX, defaultY, size.width, size.height);
-                    label.setVisible(true);
-                    add(label);
                     triggerLabels.put(t, label);
                 } else {
                     // Update text in case it changed.
@@ -365,18 +367,22 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
      * Shift every state position and transition control point by the given delta.
      */
     private void translateAllStates(int dx, int dy) {
+        // Treat dx/dy as grid steps; convert to pixels using current grid size
+        int px = dx * gridSize;
+        int py = dy * gridSize;
+
         for (StateInterface s : stateMachine.getStates()) {
             State st = (State) s;
             // Move state position
             Point pos = st.getPosition();
-            st.setPosition(new Point(pos.x + dx, pos.y + dy));
+            st.setPosition(new Point(pos.x + px, pos.y + py));
 
             /* ---- Move state‑level annotations if present ---- */
             // Works only if we’re in a PWS environment, but safe to attempt cast
             if (st instanceof pws.PWSState pwsSt) {
                 if (pwsSt.getAnnotation() != null) {
                     Rectangle r = pwsSt.getAnnotation().getBounds();
-                    pwsSt.getAnnotation().setBounds(r.x + dx, r.y + dy, r.width, r.height);
+                    pwsSt.getAnnotation().setBounds(r.x + px, r.y + py, r.width, r.height);
                 }
             }
         }
@@ -385,12 +391,12 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             Transition tr = (Transition) t;
             // Move Bézier control point
             Point cp = tr.getControlPoint();
-            if (cp != null) cp.translate(dx, dy);
+            if (cp != null) cp.translate(px, py);
 
             // Move trigger label offset (for draggable trigger labels)
             if (t.getTriggerOffset() != null) {
                 Point off = t.getTriggerOffset();
-                t.setTriggerOffset(new Point(off.x + dx, off.y + dy));
+                t.setTriggerOffset(new Point(off.x + px, off.y + py));
             }
 
             /* ---- Move transition‑level annotations if present ---- */
@@ -398,17 +404,17 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                 // Guard annotation
                 if (pwt.getGuardAnnotation() != null) {
                     Rectangle r = pwt.getGuardAnnotation().getBounds();
-                    pwt.getGuardAnnotation().setBounds(r.x + dx, r.y + dy, r.width, r.height);
+                    pwt.getGuardAnnotation().setBounds(r.x + px, r.y + py, r.width, r.height);
                 }
                 // Action annotation
                 if (pwt.getActionAnnotation() != null) {
                     Rectangle r = pwt.getActionAnnotation().getBounds();
-                    pwt.getActionAnnotation().setBounds(r.x + dx, r.y + dy, r.width, r.height);
+                    pwt.getActionAnnotation().setBounds(r.x + px, r.y + py, r.width, r.height);
                 }
                 // Transition semantics annotation
                 if (pwt.getSemanticsAnnotation() != null) {
                     Rectangle r = pwt.getSemanticsAnnotation().getBounds();
-                    pwt.getSemanticsAnnotation().setBounds(r.x + dx, r.y + dy, r.width, r.height);
+                    pwt.getSemanticsAnnotation().setBounds(r.x + px, r.y + py, r.width, r.height);
                 }
             }
         }
@@ -465,12 +471,16 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             return;
         }
 
-        // Snap states and control points to grid on release
+        // Snap states and control points to grid on release (snap using state center)
         if (snapToGrid) {
             if (selectedState != null) {
                 State st = (State) selectedState;
                 Point pos = st.getPosition();
-                st.setPosition(snap(pos));
+                int d = st.getName().equals("PseudoState") ? PSEUDO_DIAMETER : DIAMETER;
+                int r = d / 2;
+                Point center = new Point(pos.x + r, pos.y + r);
+                Point snappedCenter = snap(center);
+                st.setPosition(new Point(snappedCenter.x - r, snappedCenter.y - r));
             }
             if (selectedTransitionForControl != null) {
                 Transition tr = (Transition) selectedTransitionForControl;
@@ -562,7 +572,7 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                 System.out.println("Link mode: Source state selected: " + transitionSourceState.getName());
             } else {
                 if (clickedState != transitionSourceState) {
-                    String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave blank for internal):");
+                    String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave blank for autonomous):");
                     boolean autonomous = transitionSourceState.getName().equals("PseudoState") ||
                             (trigger == null || trigger.trim().isEmpty());
                     TransitionInterface newTransition = new Transition(transitionSourceState, clickedState, autonomous, trigger);
@@ -600,7 +610,7 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         JPopupMenu popup = new JPopupMenu();
 
         // Voce di menu per eliminare la transizione
-        JMenuItem deleteItem = new JMenuItem("Elimina Transizione");
+        JMenuItem deleteItem = new JMenuItem("Delete Transition");
         deleteItem.addActionListener(ae -> {
             // Utilizza il metodo helper per rimuovere la transizione e tutti i riferimenti associati
             deleteTransition(t);
@@ -619,9 +629,9 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
     private void showPopupMenuForState(MouseEvent e, StateInterface state) {
         System.out.println("showPopupMenuForState invoked for state: " + state.getName());
         JPopupMenu popup = new JPopupMenu();
-        JMenuItem editItem = new JMenuItem("Modifica");
+        JMenuItem editItem = new JMenuItem("Modify");
         editItem.addActionListener(ae -> {
-            String newName = JOptionPane.showInputDialog(this, "Nuovo nome per lo stato:", state.getName());
+            String newName = JOptionPane.showInputDialog(this, "New name for state:", state.getName());
             if (newName != null && !newName.trim().isEmpty()) {
                 ((State) state).setName(newName);
                 repaint();
@@ -629,26 +639,26 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         });
         popup.add(editItem);
         if (!state.getName().equals("PseudoState")) {
-            JMenuItem deleteItem = new JMenuItem("Elimina");
+            JMenuItem deleteItem = new JMenuItem("Delete");
             deleteItem.addActionListener(ae -> {
                 System.out.println("Delete menu item clicked for state: " + state.getName());
                 int confirm = JOptionPane.showConfirmDialog(this,
-                        "Sei sicuro di voler cancellare lo stato \"" + state.getName() + "\"?",
-                        "Conferma cancellazione", JOptionPane.YES_NO_OPTION);
+                    "Are you sure you want to delete state: " + state.getName() + "?",
+                    "Confirm deletion", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     boolean removed = stateMachine.getStates().remove(state);
                     if (removed) {
                         stateMachine.getTransitions().removeIf(t -> t.getSource() == state || t.getTarget() == state);
-                        System.out.println("Lo stato e le transizioni correlate sono stati rimossi dalla struttura dati.");
+                        System.out.println("The state and related transitions have been removed from the structure.");
                     } else {
-                        System.out.println("Errore: lo stato non è stato rimosso dalla struttura dati.");
+                        System.out.println("Error: state not found in the structure.");
                     }
                     repaint();
                 }
             });
             popup.add(deleteItem);
         } else {
-            JMenuItem infoItem = new JMenuItem("Pseudostato non eliminabile");
+            JMenuItem infoItem = new JMenuItem("Pseudostate not deletable");
             infoItem.setEnabled(false);
             popup.add(infoItem);
         }

@@ -10,6 +10,7 @@ import pws.PWSState;
 import pws.PWSStateMachine;
 import serializer.BinaryModelSerializer;
 import utility.SVGExporter;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
@@ -34,7 +35,14 @@ public class PWSEditor extends JFrame {
     private PWSStateMachine pwsStateMachine;
     private StateMachineEditor baseEditor;  // Editor for the current state machine
     private PWSPanel assemblyPanel;         // Panel to manage the Assembly
+    private MachineLibraryPanel libraryPanel; // inline library panel (exposed to menu actions)
     private JTabbedPane tabbedPane;         // Panel to switch between baseEditor and assemblyPanel
+    private StateMachineEditor embeddedEditor = null; // single reusable embedded editor for assembly machines
+    private JPanel machineEditorContainer; // promoted so removal callback can clear it
+    private String embeddedMachineId = null;
+    private CardLayout topCardsLayout;      // CardLayout for assembly/library switch
+    private JPanel topSwitchPanel;          // Panel containing assembly/library cards
+    private JToggleButton btnLibraryToggle; // Library toggle button reference
 
     // The main PWSEditor window uses a fixed title, e.g. "PWSEditor"
     public PWSEditor(PWSStateMachine machine) {
@@ -48,43 +56,299 @@ public class PWSEditor extends JFrame {
         initComponents();
     }
 
+    // Helper stream that can append objects to an existing object stream
+    private static class AppendingObjectOutputStream extends ObjectOutputStream {
+        public AppendingObjectOutputStream(OutputStream out) throws IOException {
+            super(out);
+        }
+
+        @Override
+        protected void writeStreamHeader() throws IOException {
+            // Do not write a header when appending
+        }
+    }
     private void initComponents() {
         setJMenuBar(createMenuBar());
 
-        // Create a specialized editor using PWSStateMachineEditor and a custom title (here "PWSMachine").
+        // Left editor area (wrapped with a header)
         baseEditor = new PWSStateMachineEditor(pwsStateMachine, "PWSMachine");
-        JPanel editorPanel = new JPanel(new BorderLayout());
-        editorPanel.add(baseEditor.getContentPane(), BorderLayout.CENTER);
+        JPanel editorInner = new JPanel(new BorderLayout());
+        editorInner.add(baseEditor.getContentPane(), BorderLayout.CENTER);
 
+        JPanel leftWrapper = new JPanel(new BorderLayout());
+        JLabel leftHeader = new JLabel("Controller", SwingConstants.CENTER);
+        leftHeader.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        leftHeader.setFont(leftHeader.getFont().deriveFont(Font.BOLD));
+        leftWrapper.add(leftHeader, BorderLayout.NORTH);
+        leftWrapper.add(editorInner, BorderLayout.CENTER);
+
+        // Right area: assembly list + embedded machine editor container (also with header)
         assemblyPanel = new PWSPanel(pwsStateMachine.getAssembly());
 
-        tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("Editor", editorPanel);
-        tabbedPane.addTab("Assembly", assemblyPanel);
-        /* ---- Disable default LEFT / RIGHT navigation of JTabbedPane ---- */
-        InputMap imDefault = tabbedPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        imDefault.put(KeyStroke.getKeyStroke("LEFT"),  "none");
-        imDefault.put(KeyStroke.getKeyStroke("RIGHT"), "none");
+        JPanel rightTop = new JPanel(new BorderLayout());
+        // Create a split view: Assembly | Library
+        this.libraryPanel = new MachineLibraryPanel(pwsStateMachine.getAssembly());
 
-        getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        JPanel assemblyWrapper = new JPanel(new BorderLayout());
+        JLabel rightHeader = new JLabel("Assembly", SwingConstants.CENTER);
+        rightHeader.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        rightHeader.setFont(rightHeader.getFont().deriveFont(Font.BOLD));
+        assemblyWrapper.add(rightHeader, BorderLayout.NORTH);
+        assemblyWrapper.add(assemblyPanel, BorderLayout.CENTER);
 
-        /* ---------- Arrow‑key tab switching ---------- */
-        InputMap im = tabbedPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        ActionMap am = tabbedPane.getActionMap();
+        JPanel libraryWrapper = new JPanel(new BorderLayout());
+        JLabel libHeader = new JLabel("Library", SwingConstants.CENTER);
+        libHeader.setBorder(BorderFactory.createEmptyBorder(6,6,6,6));
+        libHeader.setFont(libHeader.getFont().deriveFont(Font.BOLD));
+        libraryWrapper.add(libHeader, BorderLayout.NORTH);
+        libraryWrapper.add(libraryPanel, BorderLayout.CENTER);
 
-        im.put(KeyStroke.getKeyStroke("alt LEFT"),  "prevTab");
-        im.put(KeyStroke.getKeyStroke("alt RIGHT"), "nextTab");
+        // Create a single top area that alternates Assembly and Library (CardLayout)
+        topCardsLayout = new CardLayout();
+        JPanel topCardPanel = new JPanel(new BorderLayout());
 
-        am.put("prevTab", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent e) {
-                int idx = tabbedPane.getSelectedIndex();
-                if (idx > 0) tabbedPane.setSelectedIndex(idx - 1);
+        topSwitchPanel = new JPanel(topCardsLayout);
+        topSwitchPanel.add(assemblyWrapper, "assembly");
+        topSwitchPanel.add(libraryWrapper, "library");
+
+        // small toolbar to switch between Assembly and Library views
+        JToolBar tb = new JToolBar();
+        tb.setFloatable(false);
+        JToggleButton btnAssembly = new JToggleButton("Assembly");
+        btnLibraryToggle = new JToggleButton("Library");
+        ButtonGroup bg = new ButtonGroup();
+        bg.add(btnAssembly); bg.add(btnLibraryToggle);
+        btnAssembly.setSelected(true);
+        tb.add(btnAssembly); tb.add(btnLibraryToggle);
+
+        btnAssembly.addActionListener(a -> topCardsLayout.show(topSwitchPanel, "assembly"));
+        btnLibraryToggle.addActionListener(a -> topCardsLayout.show(topSwitchPanel, "library"));
+
+        topCardPanel.add(tb, BorderLayout.NORTH);
+        topCardPanel.add(topSwitchPanel, BorderLayout.CENTER);
+
+        // Create the machine editor container (bottom half of the right area)
+        machineEditorContainer = new JPanel(new BorderLayout());
+        JLabel placeholder = new JLabel("Select a machine (assembly or library) to edit", SwingConstants.CENTER);
+        machineEditorContainer.add(placeholder, BorderLayout.CENTER);
+
+        // Vertical split on the right: top cards (assembly/library) above the embedded editor
+        JSplitPane rightSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, topCardPanel, machineEditorContainer);
+        rightSplit.setResizeWeight(0.25);
+        rightSplit.setOneTouchExpandable(true);
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftWrapper, rightSplit);
+        split.setResizeWeight(0.7);
+        getContentPane().add(split, BorderLayout.CENTER);
+
+        // Wire selection from the assembly panel to show the selected machine in the embedded editor
+        assemblyPanel.setMachineSelectionListener(new pws.editor.PWSPanel.MachineSelectionListener() {
+            @Override
+            public void machineSelected(String id) {
+                StateMachine machine = pwsStateMachine.getAssembly().getStateMachines().get(id);
+                if (machine != null) {
+                    SwingUtilities.invokeLater(() -> {
+                        machineEditorContainer.removeAll();
+                        try {
+                            String title = id + " : " + (machine.getName() != null ? machine.getName() : "");
+                            if (embeddedEditor == null) {
+                                embeddedEditor = new StateMachineEditor(machine, pwsStateMachine.getAssembly(), title);
+                                embeddedEditor.setCloseCallback(() -> {
+                                    embeddedEditor = null;
+                                    machineEditorContainer.removeAll();
+                                    JLabel placeholder = new JLabel("Select a machine (assembly or library) to edit", SwingConstants.CENTER);
+                                    machineEditorContainer.add(placeholder, BorderLayout.CENTER);
+                                    machineEditorContainer.revalidate();
+                                    machineEditorContainer.repaint();
+                                    embeddedMachineId = null;
+                                });
+                            } else {
+                                embeddedEditor.bindStateMachine(machine);
+                            }
+
+                            // remember which id is currently embedded
+                            embeddedMachineId = id;
+
+                            JMenuBar mb = embeddedEditor.getJMenuBar();
+                            StateMachinePanel smPanel = embeddedEditor.getStateMachinePanel();
+
+                            JPanel wrapper = new JPanel(new BorderLayout());
+                            JPanel topArea = new JPanel(new BorderLayout());
+                            if (mb != null) topArea.add(mb, BorderLayout.NORTH);
+                            JLabel header = new JLabel("Assembly: " + title, SwingConstants.CENTER);
+                            header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+                            header.setFont(header.getFont().deriveFont(Font.BOLD));
+                            header.setForeground(Color.BLACK);
+                            header.setOpaque(true);
+                            header.setBackground(new Color(245, 245, 255));
+                            topArea.add(header, BorderLayout.SOUTH);
+
+                            wrapper.add(topArea, BorderLayout.NORTH);
+                            wrapper.add(smPanel, BorderLayout.CENTER);
+
+                            machineEditorContainer.add(wrapper, BorderLayout.CENTER);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        } catch (Exception ex) {
+                            machineEditorContainer.removeAll();
+                            JPanel wrapper = new JPanel(new BorderLayout());
+                            String title = id + " : " + (machine.getName() != null ? machine.getName() : "");
+                            JLabel header = new JLabel(title, SwingConstants.CENTER);
+                            header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+                            header.setFont(header.getFont().deriveFont(Font.BOLD));
+                            wrapper.add(header, BorderLayout.NORTH);
+                            StateMachinePanel smPanel = new StateMachinePanel(machine);
+                            wrapper.add(smPanel, BorderLayout.CENTER);
+                            machineEditorContainer.add(wrapper, BorderLayout.CENTER);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void machineRemoved(String id) {
+                // If the removed machine is currently embedded, clear the right editor area
+                if (id != null && id.equals(embeddedMachineId)) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (machineEditorContainer != null) {
+                            machineEditorContainer.removeAll();
+                            JLabel placeholder = new JLabel("Select an assembly machine to edit", SwingConstants.CENTER);
+                            machineEditorContainer.add(placeholder, BorderLayout.CENTER);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        }
+                        embeddedMachineId = null;
+                    });
+                }
+            }
+
+            @Override
+            public void machineAddedToLibrary(String key) {
+                // Refresh library panel and switch to library view
+                SwingUtilities.invokeLater(() -> {
+                    if (libraryPanel != null) {
+                        libraryPanel.refreshList();
+                    }
+                    // Switch to library view to show the newly added machine
+                    if (topCardsLayout != null && topSwitchPanel != null && btnLibraryToggle != null) {
+                        btnLibraryToggle.setSelected(true);
+                        topCardsLayout.show(topSwitchPanel, "library");
+                    }
+                });
+            }
+
+            @Override
+            public void machineEdited(String id) {
+                // Refresh library panel in case the edited machine is in the library
+                SwingUtilities.invokeLater(() -> {
+                    if (libraryPanel != null) {
+                        libraryPanel.refreshList();
+                    }
+                });
             }
         });
-        am.put("nextTab", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent e) {
-                int idx = tabbedPane.getSelectedIndex();
-                if (idx < tabbedPane.getTabCount() - 1) tabbedPane.setSelectedIndex(idx + 1);
+
+        // Wire library selection to show selected library machine in the same embedded editor
+        libraryPanel.setLibrarySelectionListener(new MachineLibraryPanel.LibrarySelectionListener() {
+            @Override
+            public void librarySelected(String key) {
+                StateMachine machine = pwsStateMachine.getAssembly().getMachineLibrary().get(key);
+                if (machine != null) {
+                    SwingUtilities.invokeLater(() -> {
+                        machineEditorContainer.removeAll();
+                        try {
+                            String title = machine.getName() != null ? machine.getName() : "Unnamed";
+                            if (embeddedEditor == null) {
+                                embeddedEditor = new StateMachineEditor(machine, pwsStateMachine.getAssembly(), title);
+                                embeddedEditor.setCloseCallback(() -> {
+                                    embeddedEditor = null;
+                                    machineEditorContainer.removeAll();
+                                    JLabel placeholder = new JLabel("Select a machine (assembly or library) to edit", SwingConstants.CENTER);
+                                    machineEditorContainer.add(placeholder, BorderLayout.CENTER);
+                                    machineEditorContainer.revalidate();
+                                    machineEditorContainer.repaint();
+                                    embeddedMachineId = null;
+                                });
+                            } else {
+                                embeddedEditor.bindStateMachine(machine);
+                            }
+                            embeddedMachineId = "lib:" + key;
+
+                            JMenuBar mb = embeddedEditor.getJMenuBar();
+                            StateMachinePanel smPanel = embeddedEditor.getStateMachinePanel();
+
+                            JPanel wrapper = new JPanel(new BorderLayout());
+                            JPanel topArea = new JPanel(new BorderLayout());
+                            if (mb != null) topArea.add(mb, BorderLayout.NORTH);
+                            JLabel header = new JLabel("Library: " + title, SwingConstants.CENTER);
+                            header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+                            header.setFont(header.getFont().deriveFont(Font.BOLD));
+                            header.setForeground(new Color(0, 90, 160));
+                            header.setOpaque(true);
+                            header.setBackground(new Color(235, 245, 255));
+                            topArea.add(header, BorderLayout.SOUTH);
+
+                            wrapper.add(topArea, BorderLayout.NORTH);
+                            wrapper.add(smPanel, BorderLayout.CENTER);
+
+                            machineEditorContainer.add(wrapper, BorderLayout.CENTER);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        } catch (Exception ex) {
+                            machineEditorContainer.removeAll();
+                            JPanel wrapper = new JPanel(new BorderLayout());
+                            String title = key + " : " + (machine.getName() != null ? machine.getName() : "");
+                            JLabel header = new JLabel("Library: " + title, SwingConstants.CENTER);
+                            header.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+                            header.setFont(header.getFont().deriveFont(Font.BOLD));
+                            wrapper.add(header, BorderLayout.NORTH);
+                            StateMachinePanel smPanel = new StateMachinePanel(machine);
+                            wrapper.add(smPanel, BorderLayout.CENTER);
+                            machineEditorContainer.add(wrapper, BorderLayout.CENTER);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void libraryRemoved(String key) {
+                if (embeddedMachineId != null && embeddedMachineId.equals("lib:" + key)) {
+                    SwingUtilities.invokeLater(() -> {
+                        machineEditorContainer.removeAll();
+                        JLabel placeholder = new JLabel("Select a machine (assembly or library) to edit", SwingConstants.CENTER);
+                        machineEditorContainer.add(placeholder, BorderLayout.CENTER);
+                        machineEditorContainer.revalidate();
+                        machineEditorContainer.repaint();
+                        embeddedMachineId = null;
+                    });
+                }
+            }
+
+            @Override
+            public void libraryRenamed(String key) {
+                // Refresh assembly list so names update where referenced
+                SwingUtilities.invokeLater(() -> {
+                    if (assemblyPanel != null) assemblyPanel.refreshList();
+                    // If currently editing this library machine, update embedded editor header
+                    if (embeddedMachineId != null && embeddedMachineId.equals("lib:" + key)) {
+                        StateMachine machine = pwsStateMachine.getAssembly().getMachineLibrary().get(key);
+                        if (machine != null && embeddedEditor != null) {
+                            embeddedEditor.bindStateMachine(machine);
+                            machineEditorContainer.revalidate();
+                            machineEditorContainer.repaint();
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void libraryLoaded(String key) {
+                // treat as selection: open in embedded editor
+                librarySelected(key);
             }
         });
     }
@@ -96,7 +360,7 @@ public class PWSEditor extends JFrame {
         JMenu fileMenu = new JMenu("File");
 
 //        // Save model item (existing)
-//        JMenuItem saveItem = new JMenuItem("Salva");
+//        JMenuItem saveItem = new JMenuItem("Save");
 //        saveItem.addActionListener(e -> {
 //            JFileChooser fileChooser = new JFileChooser();
 //            int option = fileChooser.showSaveDialog(PWSEditor.this);
@@ -104,17 +368,17 @@ public class PWSEditor extends JFrame {
 //                String filename = fileChooser.getSelectedFile().getAbsolutePath();
 //                try {
 //                    BinaryModelSerializer.saveModel(pwsStateMachine, filename);
-//                    JOptionPane.showMessageDialog(PWSEditor.this, "Modello salvato correttamente.");
+//                    JOptionPane.showMessageDialog(PWSEditor.this, "Model saved successfully.");
 //                } catch (IOException ex) {
 //                    ex.printStackTrace();
-//                    JOptionPane.showMessageDialog(PWSEditor.this, "Errore durante il salvataggio: " + ex.getMessage());
+//                    JOptionPane.showMessageDialog(PWSEditor.this, "Error saving: " + ex.getMessage());
 //                }
 //            }
 //        });
 //        fileMenu.add(saveItem);
 //
 //        // Load model item (existing)
-//        JMenuItem loadItem = new JMenuItem("Carica");
+//        JMenuItem loadItem = new JMenuItem("Load");
 //        loadItem.addActionListener(e -> {
 //            JFileChooser fileChooser = new JFileChooser();
 //            int option = fileChooser.showOpenDialog(PWSEditor.this);
@@ -136,13 +400,13 @@ public class PWSEditor extends JFrame {
 //
 //                        revalidate();
 //                        repaint();
-//                        JOptionPane.showMessageDialog(PWSEditor.this, "Modello caricato correttamente.");
+//                        JOptionPane.showMessageDialog(PWSEditor.this, "Model loaded successfully.");
 //                    } else {
-//                        JOptionPane.showMessageDialog(PWSEditor.this, "Il file selezionato non contiene un modello valido.");
+//                        JOptionPane.showMessageDialog(PWSEditor.this, "The selected file does not contain a valid model.");
 //                    }
 //                } catch (IOException | ClassNotFoundException ex) {
 //                    ex.printStackTrace();
-//                    JOptionPane.showMessageDialog(PWSEditor.this, "Errore durante il caricamento: " + ex.getMessage());
+//                    JOptionPane.showMessageDialog(PWSEditor.this, "Error loading: " + ex.getMessage());
 //                }
 //            }
 //        });
@@ -151,68 +415,224 @@ public class PWSEditor extends JFrame {
         // --- New Composite Save/Load for Model + Layout in a Single File ---
 
         // Save All (model and layout)
-        JMenuItem saveAllItem = new JMenuItem("Salva Tutto");
+        JMenuItem saveAllItem = new JMenuItem("Save All");
         saveAllItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PWS Workspace (.pws)", "pws"));
             int option = fileChooser.showSaveDialog(PWSEditor.this);
             if (option == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
-                try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-                    // Write the model first
-                    oos.writeObject(pwsStateMachine);
-                    // Write the layout data from the state machine panel.
-                    // Note: Ensure that PWSStateMachinePanel has the method saveAnnotationsToStream.
-                    ((PWSStateMachinePanel) baseEditor.getStateMachinePanel()).saveAnnotationsToStream(oos);
-                    oos.flush();
-                    JOptionPane.showMessageDialog(PWSEditor.this, "Modello e layout salvati correttamente.");
+                // Ensure the file has the .pws extension
+                if (!file.getName().toLowerCase().endsWith(".pws")) {
+                    file = new File(file.getAbsolutePath() + ".pws");
+                }
+                try {
+                    // First, serialize the annotations into a byte[] so we can write model+library
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    try (ObjectOutputStream tempOos = new ObjectOutputStream(baos)) {
+                        ((PWSStateMachinePanel) baseEditor.getStateMachinePanel()).saveAnnotationsToStream(tempOos);
+                    }
+                    byte[] annotationsBytes = baos.toByteArray();
+
+                    // Save model and machine library using the serializer helper
+                    BinaryModelSerializer.saveModelAndLibrary(pwsStateMachine, pwsStateMachine.getAssembly().getMachineLibrary(), file.getAbsolutePath());
+
+                    // Append the serialized annotations as a single byte[] object so loading can restore them
+                    try (FileOutputStream fos = new FileOutputStream(file, true);
+                         AppendingObjectOutputStream aout = new AppendingObjectOutputStream(fos)) {
+                        aout.writeObject(annotationsBytes);
+                        aout.flush();
+                    }
+
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Model, library and layout saved successfully.");
                 } catch (IOException ex) {
                     ex.printStackTrace();
-                    JOptionPane.showMessageDialog(PWSEditor.this, "Errore durante il salvataggio: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Error saving: " + ex.getMessage());
                 }
             }
         });
         fileMenu.add(saveAllItem);
 
         // Load All (model and layout)
-        JMenuItem loadAllItem = new JMenuItem("Carica Tutto");
+        JMenuItem loadAllItem = new JMenuItem("Load All");
         loadAllItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PWS Workspace (.pws)", "pws"));
             int option = fileChooser.showOpenDialog(PWSEditor.this);
             if (option == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
-                try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-                    Object obj = ois.readObject();
-                    if (obj instanceof PWSStateMachine) {
-                        pwsStateMachine = (PWSStateMachine) obj;
-                        baseEditor.dispose();
-                        baseEditor = new PWSStateMachineEditor(pwsStateMachine, "PWSMachine");
-                        JPanel editorPanel = new JPanel(new BorderLayout());
-                        editorPanel.add(baseEditor.getContentPane(), BorderLayout.CENTER);
-                        tabbedPane.setComponentAt(0, editorPanel);
-                        assemblyPanel = new PWSPanel(pwsStateMachine.getAssembly());
-                        tabbedPane.setComponentAt(1, assemblyPanel);
-                        // Now load the layout data.
-                        ((PWSStateMachinePanel) baseEditor.getStateMachinePanel()).loadAnnotationsFromStream(ois);
-                        revalidate();
-                        repaint();
-                        JOptionPane.showMessageDialog(PWSEditor.this, "Modello e layout caricati correttamente.");
+                try {
+                    // Use the helper to read model and (optional) machine library
+                    Object[] pair = BinaryModelSerializer.loadModelAndLibrary(file.getAbsolutePath());
+                    Object loadedModel = pair[0];
+                    Object libOrAnn = pair[1];
+
+                    // If libOrAnn is an Exception, the library failed to deserialize
+                    if (libOrAnn instanceof Exception) {
+                        Exception libEx = (Exception) libOrAnn;
+                        JOptionPane.showMessageDialog(PWSEditor.this, "Warning: library could not be loaded: " + libEx.getMessage(), "Warning", JOptionPane.WARNING_MESSAGE);
+                        libOrAnn = null; // proceed without library
+                    }
+
+                    if (loadedModel instanceof PWSStateMachine) {
+                        pwsStateMachine = (PWSStateMachine) loadedModel;
+
+                        // If the second object is a MachineLibrary, merge its content into the assembly's library
+                        if (libOrAnn instanceof assembly.MachineLibrary) {
+                            assembly.MachineLibrary loadedLib = (assembly.MachineLibrary) libOrAnn;
+                            assembly.Assembly asm = pwsStateMachine.getAssembly();
+                            assembly.MachineLibrary currentLib = asm.getMachineLibrary();
+                            // If the deserialized library is a distinct instance, merge it; if it's the same
+                            // instance as the one already inside the loaded model, skip (clearing would
+                            // remove the entries we just deserialized with the model).
+                            if (loadedLib != currentLib) {
+                                currentLib.clear();
+                                // Re-add via addMachine to rebuild name-to-key mapping
+                                for (Map.Entry<String, machinery.StateMachine> entry : loadedLib.getMachines().entrySet()) {
+                                    currentLib.addMachine(entry.getKey(), entry.getValue());
+                                }
+                            }
+                        }
+
+                        // Rebuild the UI so all panels (assembly/library/editor) point to the new model
+                        getContentPane().removeAll();
+                        initComponents();
+
+                        // Handle annotations: two formats are possible in files on disk:
+                        // - Older files: second object is the annotations (byte[] or direct stream content)
+                        // - Newer files: third object contains annotations (we need to reopen and skip first two)
+                        boolean annotationsHandled = false;
+                        if (libOrAnn instanceof byte[]) {
+                            // libOrAnn is actually the annotations bytes from older-format save
+                            byte[] annotationsBytes = (byte[]) libOrAnn;
+                            try (ObjectInputStream annIn = new ObjectInputStream(new ByteArrayInputStream(annotationsBytes))) {
+                                ((PWSStateMachinePanel) baseEditor.getStateMachinePanel()).loadAnnotationsFromStream(annIn);
+                            }
+                            annotationsHandled = true;
+                        }
+
+                        if (!annotationsHandled) {
+                            // Try to read a third object (annotations) if present
+                            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                                // skip model
+                                ois.readObject();
+                                // skip library (may be annotations in old files)
+                                try {
+                                    ois.readObject();
+                                } catch (EOFException eof) {
+                                    // nothing more
+                                }
+                                try {
+                                    Object maybeAnn = ois.readObject();
+                                    if (maybeAnn instanceof byte[]) {
+                                        byte[] annotationsBytes = (byte[]) maybeAnn;
+                                        try (ObjectInputStream annIn = new ObjectInputStream(new ByteArrayInputStream(annotationsBytes))) {
+                                            ((PWSStateMachinePanel) baseEditor.getStateMachinePanel()).loadAnnotationsFromStream(annIn);
+                                        }
+                                    }
+                                } catch (EOFException eof) {
+                                    // no annotations present
+                                }
+                            } catch (IOException | ClassNotFoundException ex) {
+                                // Non-fatal: annotations may not be present or may be older format
+                            }
+                        }
+
+                        // Ensure state dashboards (annotations) are visible after loading
+                        try {
+                            PWSStateMachinePanel panel = (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+                            panel.setShowStateAnnotations(true);
+                            panel.repaint();
+                        } catch (Exception ex) {
+                            // ignore
+                        }
+                        getContentPane().revalidate();
+                        getContentPane().repaint();
+                        JOptionPane.showMessageDialog(PWSEditor.this, "Model, library and layout loaded successfully.");
                     } else {
-                        JOptionPane.showMessageDialog(PWSEditor.this, "Il file selezionato non contiene dati validi.");
+                        JOptionPane.showMessageDialog(PWSEditor.this, "The selected file does not contain valid data.");
                     }
                 } catch (IOException | ClassNotFoundException ex) {
                     ex.printStackTrace();
-                    JOptionPane.showMessageDialog(PWSEditor.this, "Errore durante il caricamento: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Error loading: " + ex.getMessage());
                 }
             }
         });
         fileMenu.add(loadAllItem);
 
+        // Save Library (export only the MachineLibrary)
+        JMenuItem saveLibItem = new JMenuItem("Save Library...");
+        saveLibItem.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser();
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Machine Library (.mlib)", "mlib"));
+            if (fc.showSaveDialog(PWSEditor.this) == JFileChooser.APPROVE_OPTION) {
+                File file = fc.getSelectedFile();
+                if (!file.getName().toLowerCase().endsWith(".mlib")) {
+                    file = new File(file.getAbsolutePath() + ".mlib");
+                }
+                try {
+                    BinaryModelSerializer.saveModel(pwsStateMachine.getAssembly().getMachineLibrary(), file.getAbsolutePath());
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Library saved successfully.");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Error saving library: " + ex.getMessage());
+                }
+            }
+        });
+        fileMenu.add(saveLibItem);
+
+        // Load Library (replace current library contents)
+        JMenuItem loadLibItem = new JMenuItem("Load Library...");
+        loadLibItem.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser();
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Machine Library (.mlib)", "mlib"));
+            if (fc.showOpenDialog(PWSEditor.this) == JFileChooser.APPROVE_OPTION) {
+                File file = fc.getSelectedFile();
+                try {
+                    Object obj = BinaryModelSerializer.loadModel(file.getAbsolutePath());
+                    if (obj instanceof assembly.MachineLibrary) {
+                        assembly.MachineLibrary loaded = (assembly.MachineLibrary) obj;
+                        assembly.MachineLibrary current = pwsStateMachine.getAssembly().getMachineLibrary();
+                        current.clear();
+                        for (Map.Entry<String, machinery.StateMachine> entry : loaded.getMachines().entrySet()) {
+                            current.addMachine(entry.getKey(), entry.getValue());
+                        }
+                        if (libraryPanel != null) libraryPanel.refreshList();
+                        if (assemblyPanel != null) assemblyPanel.refreshList();
+
+                        // If the embedded editor was showing a library machine that no longer exists, clear it
+                        SwingUtilities.invokeLater(() -> {
+                            if (embeddedMachineId != null && embeddedMachineId.startsWith("lib:")) {
+                                String key = embeddedMachineId.substring(4);
+                                if (pwsStateMachine.getAssembly().getMachineLibrary().get(key) == null) {
+                                    machineEditorContainer.removeAll();
+                                    JLabel placeholder = new JLabel("Select a machine (assembly or library) to edit", SwingConstants.CENTER);
+                                    machineEditorContainer.add(placeholder, BorderLayout.CENTER);
+                                    machineEditorContainer.revalidate();
+                                    machineEditorContainer.repaint();
+                                    embeddedMachineId = null;
+                                }
+                            }
+                        });
+
+                        JOptionPane.showMessageDialog(PWSEditor.this, "Library loaded successfully.");
+                    } else {
+                        JOptionPane.showMessageDialog(PWSEditor.this, "The selected file does not contain a MachineLibrary.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (IOException | ClassNotFoundException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(PWSEditor.this, "Error loading library: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        fileMenu.add(loadLibItem);
+
         // New: Export as SVG menu item.
-        JMenuItem exportSVGItem = new JMenuItem("Esporta come SVG");
+        JMenuItem exportSVGItem = new JMenuItem("Export as SVG");
         exportSVGItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(
-                    new javax.swing.filechooser.FileNameExtensionFilter("File SVG", "svg"));
+                fileChooser.setFileFilter(
+                    new javax.swing.filechooser.FileNameExtensionFilter("SVG File", "svg"));
 
             if (fileChooser.showSaveDialog(PWSEditor.this)
                     == JFileChooser.APPROVE_OPTION) {
@@ -231,13 +651,13 @@ public class PWSEditor extends JFrame {
                 SVGExporter.exportPanelToSVGFile(panel, file);
 
                 JOptionPane.showMessageDialog(PWSEditor.this,
-                        "File SVG salvato correttamente.");
+                    "SVG file saved successfully.");
             }
         });
         fileMenu.add(exportSVGItem);
 
         // Exit item
-        JMenuItem exitItem = new JMenuItem("Esci");
+        JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.addActionListener(e -> System.exit(0));
         fileMenu.addSeparator();
         fileMenu.add(exitItem);
@@ -245,23 +665,40 @@ public class PWSEditor extends JFrame {
         menuBar.add(fileMenu);
 
         // --- Edit Menu (existing items) ---
-        JMenu editMenu = new JMenu("Modifica");
+        JMenu editMenu = new JMenu("Edit");
 
-        JMenuItem addStateItem = new JMenuItem("Aggiungi Stato");
+        JMenuItem addStateItem = new JMenuItem("Add State");
         addStateItem.addActionListener(e -> {
-            String name = JOptionPane.showInputDialog(PWSEditor.this, "Inserisci il nome dello stato:");
+            String name = JOptionPane.showInputDialog(PWSEditor.this, "Enter state name:");
             if (name != null && !name.trim().isEmpty()) {
-                pwsStateMachine.addState(new PWSState(
-                        name,
-                        new Point(50, 50),
-                        pwsStateMachine.getAssembly()
-                ));
+                // create state at a default top-left, then align its CENTER to the grid if enabled
+                Point defaultTopLeft = new Point(50, 50);
+                PWSState newState = new PWSState(name, defaultTopLeft, pwsStateMachine.getAssembly());
+                pwsStateMachine.addState(newState);
+
+                // Try to align center to grid using the active panel's grid settings
+                try {
+                    PWSStateMachinePanel panel = (PWSStateMachinePanel) ((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+                    if (panel.isSnapToGrid()) {
+                        int grid = panel.getGridSize();
+                        int diameter = 50; // must match StateMachinePanel.DIAMETER
+                        int radius = diameter / 2;
+                        Point center = new Point(defaultTopLeft.x + radius, defaultTopLeft.y + radius);
+                        int snappedCenterX = Math.round(center.x / (float) grid) * grid;
+                        int snappedCenterY = Math.round(center.y / (float) grid) * grid;
+                        Point newTopLeft = new Point(snappedCenterX - radius, snappedCenterY - radius);
+                        newState.setPosition(newTopLeft);
+                    }
+                } catch (ClassCastException ex) {
+                    // If casting fails, ignore snapping and leave default position.
+                }
+
                 baseEditor.getStateMachinePanel().repaint();
             }
         });
         editMenu.add(addStateItem);
 
-        JMenuItem addInitialTransitionItem = new JMenuItem("Aggiungi transizione iniziale");
+        JMenuItem addInitialTransitionItem = new JMenuItem("Add initial transition");
         addInitialTransitionItem.addActionListener(e ->
                 baseEditor.getStateMachinePanel().enableInitialTransitionMode());
         editMenu.add(addInitialTransitionItem);
@@ -295,28 +732,37 @@ public class PWSEditor extends JFrame {
 //        });
 //        editMenu.add(addTransitionItem);
 
-        JMenuItem linkModeItem = new JMenuItem("Crea transizione (modalità collega)");
+        JMenuItem linkModeItem = new JMenuItem("Create transition (link mode)");
         linkModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().enableLinkMode());
         editMenu.add(linkModeItem);
 
-        JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Modalità modifica", true);
+        JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Edit mode", true);
         editModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().setShowControlHandles(editModeItem.isSelected()));
         editMenu.add(editModeItem);
 
         menuBar.add(editMenu);
 
-        // --- View menu: toggle state annotations ---
+        // --- View menu: toggle state dashboards ---
         JMenu viewMenu = new JMenu("View");
-        JCheckBoxMenuItem showStateAnn = new JCheckBoxMenuItem("Show State Annotations", false);
+        JCheckBoxMenuItem showStateAnn = new JCheckBoxMenuItem("Show state dashboards", true);
         showStateAnn.addActionListener(e -> {
             boolean show = showStateAnn.isSelected();
-            // Retrieve the PWSStateMachinePanel and toggle annotations
+            // Retrieve the PWSStateMachinePanel and toggle annotations/dashboards
             PWSStateMachinePanel panel =
                 (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
             panel.setShowStateAnnotations(show);
             panel.repaint();
         });
         viewMenu.add(showStateAnn);
+
+        // Ensure dashboards are visible at startup
+        try {
+            PWSStateMachinePanel panel = (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+            panel.setShowStateAnnotations(true);
+            panel.repaint();
+        } catch (Exception ex) {
+            // Ignore if panel is not yet ready
+        }
 
         JCheckBoxMenuItem showGridItem = new JCheckBoxMenuItem("Show grid", true);
         showGridItem.addActionListener(e -> {
@@ -353,6 +799,16 @@ public class PWSEditor extends JFrame {
             }
         });
         viewMenu.add(gridSizeItem);
+
+        // LTL Formula editor for the current assembly
+        JMenuItem ltlEditorItem = new JMenuItem("LTL Editor...");
+        ltlEditorItem.addActionListener(e -> {
+            pws.editor.LTLFormulaEditorDialog dlg = new pws.editor.LTLFormulaEditorDialog(PWSEditor.this, pwsStateMachine.getAssembly());
+            dlg.setVisible(true);
+        });
+        // Disabled by default (grayed out)
+        ltlEditorItem.setEnabled(false);
+        viewMenu.add(ltlEditorItem);
 
         menuBar.add(viewMenu);
         return menuBar;

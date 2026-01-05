@@ -22,9 +22,9 @@ public class AssemblyPanel extends JPanel {
         add(new JScrollPane(stateMachineList), BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel();
-        JButton addButton = new JButton("Aggiungi");
-        JButton editButton = new JButton("Modifica");
-        JButton removeButton = new JButton("Rimuovi");
+        JButton addButton = new JButton("Add");
+        JButton editButton = new JButton("Edit");
+        JButton removeButton = new JButton("Remove");
 
         addButton.addActionListener(e -> onAdd());
         editButton.addActionListener(e -> onEdit());
@@ -47,22 +47,22 @@ public class AssemblyPanel extends JPanel {
 
     private void onAdd() {
         // Chiedi un identificatore univoco
-        String id = JOptionPane.showInputDialog(this, "Inserisci un identificatore univoco:");
+        String id = JOptionPane.showInputDialog(this, "Enter a unique identifier:");
         if (id == null || id.trim().isEmpty()) {
             return;
         }
         // Chiedi se si desidera una nuova macchina o usare una esistente
         int option = JOptionPane.showOptionDialog(this,
-                "Vuoi creare una nuova macchina o selezionare una già presente?",
-                "Aggiungi StateMachine",
+                "Do you want to create a new machine or select an existing one?",
+                "Add StateMachine",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE,
                 null,
-                new Object[] {"Nuova", "Esistente"},
-                "Nuova");
+                new Object[] {"New", "Existing"},
+                "New");
         if(option == JOptionPane.YES_OPTION) {
             // Crea una nuova PWSStateMachine
-            String name = JOptionPane.showInputDialog(this, "Inserisci il nome della macchina:");
+            String name = JOptionPane.showInputDialog(this, "Enter the machine name:");
             if(name == null || name.trim().isEmpty()){
                 return;
             }
@@ -72,8 +72,8 @@ public class AssemblyPanel extends JPanel {
             // Seleziona una macchina esistente: mostriamo una lista degli identificatori già presenti
             Map<String, StateMachine> machines = assembly.getStateMachines();
             if(machines.isEmpty()){
-                JOptionPane.showMessageDialog(this, "Non ci sono macchine esistenti. Verrà creata una nuova macchina.");
-                String name = JOptionPane.showInputDialog(this, "Inserisci il nome della macchina:");
+                JOptionPane.showMessageDialog(this, "There are no existing machines. A new machine will be created.");
+                String name = JOptionPane.showInputDialog(this, "Enter the machine name:");
                 if(name == null || name.trim().isEmpty()){
                     return;
                 }
@@ -81,8 +81,8 @@ public class AssemblyPanel extends JPanel {
                 assembly.addStateMachine(id, newMachine);
             } else {
                 Object[] options = machines.keySet().toArray();
-                String selectedId = (String) JOptionPane.showInputDialog(this, "Seleziona una macchina:",
-                        "Macchine esistenti", JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+                String selectedId = (String) JOptionPane.showInputDialog(this, "Select a machine:",
+                        "Existing machines", JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
                 if(selectedId != null) {
                     StateMachine existingMachine = machines.get(selectedId);
                     // Aggiungi la stessa macchina con il nuovo identificatore
@@ -98,7 +98,7 @@ public class AssemblyPanel extends JPanel {
         if(selected == null) return;
         // Estrai l'identificatore (assumendo formato "id - nome")
         String id = selected.split(" - ")[0];
-        String newName = JOptionPane.showInputDialog(this, "Modifica il nome della macchina:",
+        String newName = JOptionPane.showInputDialog(this, "Edit the machine name:",
                 assembly.getStateMachines().get(id).getName());
         if(newName != null && !newName.trim().isEmpty()){
             assembly.getStateMachines().get(id).setName(newName);
@@ -111,8 +111,8 @@ public class AssemblyPanel extends JPanel {
         if(selected == null) return;
         String id = selected.split(" - ")[0];
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Sei sicuro di voler rimuovere la macchina con identificatore " + id + "?",
-                "Conferma", JOptionPane.YES_NO_OPTION);
+                "Are you sure you want to remove the machine with identifier " + id + "?",
+                "Confirm", JOptionPane.YES_NO_OPTION);
         if(confirm == JOptionPane.YES_OPTION) {
             assembly.getStateMachines().remove(id);
             refreshList();
