@@ -3,7 +3,7 @@ package editor;
 import assembly.Assembly;
 import machinery.*;
 import pws.PWSStateMachine;
-import utility.SVGExporter;
+// SVG export removed: not used when exporting PDFs
 
 import javax.swing.*;
 import java.awt.*;
@@ -128,28 +128,34 @@ public class StateMachineEditor extends JFrame {
         fileMenu.add(loadMachineItem);
         fileMenu.add(saveMachineItem);
         fileMenu.addSeparator();
-        JMenuItem exportSVGItem = new JMenuItem("Export as SVG");
-        exportSVGItem.addActionListener(e -> {
+
+        JMenuItem exportPDFItem = new JMenuItem("Export as PDF");
+        exportPDFItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setFileFilter(
-                    new javax.swing.filechooser.FileNameExtensionFilter("SVG File", "svg"));
+                    new javax.swing.filechooser.FileNameExtensionFilter("PDF File", "pdf"));
 
             if (fileChooser.showSaveDialog(StateMachineEditor.this)
                     == JFileChooser.APPROVE_OPTION) {
 
                 File file = fileChooser.getSelectedFile();
-                if (!file.getName().toLowerCase().endsWith(".svg")) {
-                    file = new File(file.getAbsolutePath() + ".svg");
+                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+                    file = new File(file.getAbsolutePath() + ".pdf");
                 }
 
-                // HERE: just the graphic panel, as before
-                SVGExporter.exportPanelToSVGFile(statePanel, file);
-
-                JOptionPane.showMessageDialog(StateMachineEditor.this,
-                        "SVG file successfully saved.");
+                try {
+                    utility.PDFExporter.exportPanelToPDF(statePanel, file);
+                    JOptionPane.showMessageDialog(StateMachineEditor.this,
+                            "PDF file successfully saved.");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(StateMachineEditor.this,
+                            "Error saving PDF: " + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
-        fileMenu.add(exportSVGItem);
+        fileMenu.add(exportPDFItem);
         fileMenu.add(closeEditorItem);
         menuBar.add(fileMenu);
 

@@ -9,7 +9,6 @@ import machinery.StateMachine;
 import pws.PWSState;
 import pws.PWSStateMachine;
 import serializer.BinaryModelSerializer;
-import utility.SVGExporter;
 import java.util.Map;
 import java.util.logging.Logger;
 import java.util.logging.Handler;
@@ -81,6 +80,40 @@ public class PWSEditor extends JFrame {
         leftHeader.setFont(leftHeader.getFont().deriveFont(Font.BOLD));
         leftWrapper.add(leftHeader, BorderLayout.NORTH);
         leftWrapper.add(editorInner, BorderLayout.CENTER);
+
+        // Ensure clicks anywhere on the left editor area transfer focus to the controller's panel
+        Component controllerPanel = baseEditor.getStateMachinePanel();
+        java.awt.event.MouseAdapter focusRequester = new java.awt.event.MouseAdapter() {
+            private void requestCtrlFocus() {
+                if (controllerPanel == null) return;
+                // Clear any global focus owner (embedded editor may hold it)
+                try {
+                    java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().clearGlobalFocusOwner();
+                } catch (Exception ignored) {}
+                // Ask for focus on the controller panel on the EDT
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    try {
+                        controllerPanel.requestFocusInWindow();
+                    } catch (Exception ignored) {}
+                });
+            }
+
+            @Override public void mousePressed(java.awt.event.MouseEvent e) {
+                requestCtrlFocus();
+            }
+
+            @Override public void mouseReleased(java.awt.event.MouseEvent e) {
+                requestCtrlFocus();
+            }
+        };
+        // Install listener on header and the editor wrapper so clicks reach the state panel
+        leftHeader.addMouseListener(focusRequester);
+        editorInner.addMouseListener(focusRequester);
+        leftWrapper.addMouseListener(focusRequester);
+        // Also attach directly to the controller panel so clicks on its child components transfer focus
+        if (controllerPanel != null) {
+            controllerPanel.addMouseListener(focusRequester);
+        }
 
         // Right area: assembly list + embedded machine editor container (also with header)
         assemblyPanel = new PWSPanel(pwsStateMachine.getAssembly());
@@ -161,6 +194,13 @@ public class PWSEditor extends JFrame {
                                     machineEditorContainer.revalidate();
                                     machineEditorContainer.repaint();
                                     embeddedMachineId = null;
+                                        // Restore focus to the main controller panel when embedded editor is closed
+                                        SwingUtilities.invokeLater(() -> {
+                                            try {
+                                                Component ctrl = baseEditor.getStateMachinePanel();
+                                                if (ctrl != null) ctrl.requestFocusInWindow();
+                                            } catch (Exception ignored) {}
+                                        });
                                 });
                             } else {
                                 embeddedEditor.bindStateMachine(machine);
@@ -220,6 +260,11 @@ public class PWSEditor extends JFrame {
                             machineEditorContainer.repaint();
                         }
                         embeddedMachineId = null;
+                        // ensure focus returns to main controller panel after removal
+                        try {
+                            Component ctrl = baseEditor.getStateMachinePanel();
+                            if (ctrl != null) ctrl.requestFocusInWindow();
+                        } catch (Exception ignored) {}
                     });
                 }
             }
@@ -627,34 +672,39 @@ public class PWSEditor extends JFrame {
         });
         fileMenu.add(loadLibItem);
 
-        // New: Export as SVG menu item.
-        JMenuItem exportSVGItem = new JMenuItem("Export as SVG");
-        exportSVGItem.addActionListener(e -> {
+        // SVG export removed — prefer PDF export
+
+        // New: Export as PDF menu item.
+        JMenuItem exportPDFItem = new JMenuItem("Export as PDF");
+        exportPDFItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setFileFilter(
-                    new javax.swing.filechooser.FileNameExtensionFilter("SVG File", "svg"));
+            fileChooser.setFileFilter(
+                    new javax.swing.filechooser.FileNameExtensionFilter("PDF File", "pdf"));
 
             if (fileChooser.showSaveDialog(PWSEditor.this)
                     == JFileChooser.APPROVE_OPTION) {
 
                 File file = fileChooser.getSelectedFile();
-                if (!file.getName().toLowerCase().endsWith(".svg")) {
-                    file = new File(file.getAbsolutePath() + ".svg");
+                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+                    file = new File(file.getAbsolutePath() + ".pdf");
                 }
 
-                // 👇 QUI LA DIFFERENZA IMPORTANTE
-                // Non esportiamo più l'intero editorPanel (che include il bottone),
-                // ma solo il pannello della macchina a stati dal baseEditor.
                 StateMachinePanel panel =
                         ((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
 
-                SVGExporter.exportPanelToSVGFile(panel, file);
-
-                JOptionPane.showMessageDialog(PWSEditor.this,
-                    "SVG file saved successfully.");
+                try {
+                    utility.PDFExporter.exportPanelToPDF(panel, file);
+                    JOptionPane.showMessageDialog(PWSEditor.this,
+                            "PDF file saved successfully.");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(PWSEditor.this,
+                            "Error saving PDF: " + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
-        fileMenu.add(exportSVGItem);
+        fileMenu.add(exportPDFItem);
 
         // Exit item
         JMenuItem exitItem = new JMenuItem("Exit");
