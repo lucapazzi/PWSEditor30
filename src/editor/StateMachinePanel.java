@@ -85,7 +85,7 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         // Enable keyboard focus so we can capture arrow keys
         setFocusable(true);
         // --- WASD-key bindings to pan the entire diagram ---
-        InputMap im = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        InputMap im = getInputMap(JComponent.WHEN_FOCUSED);
         ActionMap am = getActionMap();
 
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0), "moveLeft");   // A = left
@@ -134,6 +134,7 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         drawStates(g);
         drawTransitions(g);
         updateTriggerLabels(); // Add draggable labels for transitions with triggers
+        // (Focus glow removed — visual hint disabled during resizing)
     }
 
     // Remove and clear all trigger labels

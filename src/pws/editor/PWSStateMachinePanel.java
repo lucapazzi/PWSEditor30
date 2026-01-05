@@ -48,12 +48,6 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         setLayout(null);
         // Enable keyboard focus so arrow keys translate the whole diagram
         setFocusable(true);
-        // Ensure we request focus once the panel becomes showing (fixes embedded controller editor focus)
-        addHierarchyListener(e -> {
-            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing()) {
-                requestFocusInWindow();
-            }
-        });
         // Mouse listeners are inherited from StateMachinePanel.
     }
 

@@ -30,6 +30,14 @@ public class DraggableTriggerLabel extends JLabel {
             @Override
             public void mousePressed(MouseEvent e) {
                 initialClick = e.getPoint();
+                // When clicking on the label, ensure the containing StateMachinePanel gets focus
+                java.awt.Component smPanel = javax.swing.SwingUtilities.getAncestorOfClass(editor.StateMachinePanel.class, DraggableTriggerLabel.this);
+                if (smPanel != null) {
+                    smPanel.requestFocusInWindow();
+                } else {
+                    // fallback: request focus on this label's parent
+                    if (getParent() != null) getParent().requestFocusInWindow();
+                }
             }
         });
         addMouseMotionListener(new MouseAdapter() {

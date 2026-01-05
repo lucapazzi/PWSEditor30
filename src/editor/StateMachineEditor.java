@@ -3,7 +3,7 @@ package editor;
 import assembly.Assembly;
 import machinery.*;
 import pws.PWSStateMachine;
-import utility.SVGExporter;
+// SVG export removed: not used when exporting PDFs
 
 import javax.swing.*;
 import java.awt.*;
@@ -128,33 +128,6 @@ public class StateMachineEditor extends JFrame {
         fileMenu.add(loadMachineItem);
         fileMenu.add(saveMachineItem);
         fileMenu.addSeparator();
-        JMenuItem exportSVGItem = new JMenuItem("Export as SVG");
-        exportSVGItem.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(
-                    new javax.swing.filechooser.FileNameExtensionFilter("SVG File", "svg"));
-
-            if (fileChooser.showSaveDialog(StateMachineEditor.this)
-                    == JFileChooser.APPROVE_OPTION) {
-
-                File file = fileChooser.getSelectedFile();
-                if (!file.getName().toLowerCase().endsWith(".svg")) {
-                    file = new File(file.getAbsolutePath() + ".svg");
-                }
-
-                try {
-                    utility.VectorSVGExporter.exportPanelToVectorSVG(statePanel, file);
-                    JOptionPane.showMessageDialog(StateMachineEditor.this,
-                            "Vector SVG file successfully saved.");
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(StateMachineEditor.this,
-                            "Error saving SVG: " + ex.getMessage(),
-                            "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-        fileMenu.add(exportSVGItem);
 
         JMenuItem exportPDFItem = new JMenuItem("Export as PDF");
         exportPDFItem.addActionListener(e -> {
