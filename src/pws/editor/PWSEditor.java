@@ -656,6 +656,38 @@ public class PWSEditor extends JFrame {
         });
         fileMenu.add(exportSVGItem);
 
+        // New: Export as PDF menu item.
+        JMenuItem exportPDFItem = new JMenuItem("Export as PDF");
+        exportPDFItem.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(
+                    new javax.swing.filechooser.FileNameExtensionFilter("PDF File", "pdf"));
+
+            if (fileChooser.showSaveDialog(PWSEditor.this)
+                    == JFileChooser.APPROVE_OPTION) {
+
+                File file = fileChooser.getSelectedFile();
+                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+                    file = new File(file.getAbsolutePath() + ".pdf");
+                }
+
+                StateMachinePanel panel =
+                        ((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
+
+                try {
+                    utility.PDFExporter.exportPanelToPDF(panel, file);
+                    JOptionPane.showMessageDialog(PWSEditor.this,
+                            "PDF file saved successfully.");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(PWSEditor.this,
+                            "Error saving PDF: " + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        fileMenu.add(exportPDFItem);
+
         // Exit item
         JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.addActionListener(e -> System.exit(0));

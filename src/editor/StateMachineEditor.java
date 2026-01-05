@@ -150,6 +150,34 @@ public class StateMachineEditor extends JFrame {
             }
         });
         fileMenu.add(exportSVGItem);
+
+        JMenuItem exportPDFItem = new JMenuItem("Export as PDF");
+        exportPDFItem.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(
+                    new javax.swing.filechooser.FileNameExtensionFilter("PDF File", "pdf"));
+
+            if (fileChooser.showSaveDialog(StateMachineEditor.this)
+                    == JFileChooser.APPROVE_OPTION) {
+
+                File file = fileChooser.getSelectedFile();
+                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+                    file = new File(file.getAbsolutePath() + ".pdf");
+                }
+
+                try {
+                    utility.PDFExporter.exportPanelToPDF(statePanel, file);
+                    JOptionPane.showMessageDialog(StateMachineEditor.this,
+                            "PDF file successfully saved.");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(StateMachineEditor.this,
+                            "Error saving PDF: " + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        fileMenu.add(exportPDFItem);
         fileMenu.add(closeEditorItem);
         menuBar.add(fileMenu);
 
