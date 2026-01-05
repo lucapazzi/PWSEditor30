@@ -642,16 +642,19 @@ public class PWSEditor extends JFrame {
                     file = new File(file.getAbsolutePath() + ".svg");
                 }
 
-                // 👇 QUI LA DIFFERENZA IMPORTANTE
-                // Non esportiamo più l'intero editorPanel (che include il bottone),
-                // ma solo il pannello della macchina a stati dal baseEditor.
                 StateMachinePanel panel =
                         ((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
 
-                SVGExporter.exportPanelToSVGFile(panel, file);
-
-                JOptionPane.showMessageDialog(PWSEditor.this,
-                    "SVG file saved successfully.");
+                try {
+                    utility.VectorSVGExporter.exportPanelToVectorSVG(panel, file);
+                    JOptionPane.showMessageDialog(PWSEditor.this,
+                            "Vector SVG file saved successfully.");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(PWSEditor.this,
+                            "Error saving SVG: " + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
         fileMenu.add(exportSVGItem);

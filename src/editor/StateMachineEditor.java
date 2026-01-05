@@ -142,11 +142,16 @@ public class StateMachineEditor extends JFrame {
                     file = new File(file.getAbsolutePath() + ".svg");
                 }
 
-                // HERE: just the graphic panel, as before
-                SVGExporter.exportPanelToSVGFile(statePanel, file);
-
-                JOptionPane.showMessageDialog(StateMachineEditor.this,
-                        "SVG file successfully saved.");
+                try {
+                    utility.VectorSVGExporter.exportPanelToVectorSVG(statePanel, file);
+                    JOptionPane.showMessageDialog(StateMachineEditor.this,
+                            "Vector SVG file successfully saved.");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(StateMachineEditor.this,
+                            "Error saving SVG: " + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
         fileMenu.add(exportSVGItem);
