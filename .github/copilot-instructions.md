@@ -1,52 +1,94 @@
 <!-- Copilot instructions for AI coding agents in this repo -->
 # PWSEditor — Copilot Instructions
 
-Purpose: help an AI contributor become productive quickly in this Java Swing repository.
+Help AI contributors become productive in this Part-Whole Statecharts (PWS) editing environment.
 
-- Quick start (build & run):
-  - Compile all sources (no build system present):
+## Quick Start
 
-    ```sh
-    javac -d out $(find src -name '*.java')
-    ```
+**No build system** — manual compilation and execution:
 
-  - Run the main demo (package `editor`):
+```sh
+# Compile all sources
+javac -d out $(find src -name '*.java')
 
-    ```sh
-    java -cp out editor.Main
-    ```
+# Run the main editor
+java -cp out pws.editor.PWSEditor
 
-- Big picture (what to read first):
-  - Model layer: `src/pws` and `src/machinery` contain core statechart model classes (e.g. `PWSStateMachine.java`, `PWSState.java`, `StateMachine.java`, `StateInterface.java`).
-  - Semantics & analysis: `src/pws/semantics` implements semantics computation (`Semantics.java`, `SemanticsVisitor.java`).
-  - Editor / UI: `src/editor` and `src/pws/editor` hold Swing UI components and annotation widgets (`PWSEditor.java`, `PWSStateMachinePanel.java`, `AssemblyPanel.java`).
-  - Assembly generation: `src/assembly` and `src/pws/semantics/AssemblyGenerator.java` show how assemblies and truth tables are produced.
-  - Persistence: `src/serializer/BinaryModelSerializer.java` is the model serializer to inspect for saving/loading behavior.
+# Run demo editor (legacy entry point)
+java -cp out editor.Main
+```
 
-- Key patterns and conventions (project-specific):
-  - Explicit model / view separation: model classes live under `pws` + `machinery`; UI under `editor` and `pws/editor`. Prefer changing model logic in `pws` or `machinery` and view logic in `pws/editor`.
-  - Interface suffix: interfaces use `*Interface.java` (e.g. `StateInterface.java`, `TransitionInterface.java`) — follow existing naming for new contracts.
-  - Annotations subsystem: interactive annotations and editable guards/actions are in `src/pws/editor/annotation` — editing flows update model objects directly.
-  - Semantics visitors: semantic computations use visitor patterns (`SemanticsVisitor`) — extend visitors rather than scattering logic across model classes.
+## Architecture & Big Picture
 
-- Integration points & data flow to watch:
-  - UI -> Model: UI panels create/update `PWSState` and `PWSTransition` objects; saving goes through `BinaryModelSerializer`.
-  - Model -> Semantics: `PWSStateMachine` passes structures to `Semantics`/`SemanticsVisitor` for computed constraints/semantics.
-  - Assembly generator: `assembly/AssemblyGenerator.java` and `pws/semantics/AssemblyGenerator.java` show transformations from statecharts to assembly representations.
+**Three-layer design:**
 
-- Developer workflows and gotchas:
-  - No Maven/Gradle present: use the manual `javac`/`java` commands above. Tests/frameworks are not present.
-  - Code may assume Swing UI thread for view updates — run UI code on the AWT event thread when adding UI changes.
-  - Many classes are package-scoped and rely on simple file structure; avoid moving files across packages without updating imports.
+1. **Model Layer** (`machinery/`, `pws/`)
+   - `machinery/{State,Transition,StateMachine}.java` — base statechart model (generic)
+   - `pws/{PWSState,PWSTransition,PWSStateMachine}.java` — PWS-specific model extending base classes
+   - `pws/PWSStateMachine` wraps an `Assembly` (collection of state machines) for specifying part–whole hierarchies
 
-- Where to look for examples when implementing changes:
-  - `src/pws/editor/PWSEditor.java` — wiring of top-level editor components and menus.
-  - `src/pws/semantics/Semantics.java` and `SemanticsVisitor.java` — the canonical place for semantic logic.
-  - `src/pws/editor/annotation/*` — how guard/action editors are implemented and bound to model objects.
+2. **Semantics & Analysis** (`pws/editor/semantics/`, `assembly/`)
+   - `Configuration` — encodes a concrete assignment of states to assembly machines
+   - `Semantics` — set of configurations satisfying a constraint (with implication and normalization logic)
+   - `SemanticsVisitor` — computes constraint/computed semantics per state and transition
+   - `AssemblyGenerator` — generates all possible `Assembly` instances from a template for truth-table and LTL analysis
 
-- Notes for the AI agent:
-  - Make minimal, focused changes; follow existing naming and layering.
-  - If adding new public APIs, mirror the `*Interface.java` convention and update usages.
-  - When editing UI files, prefer preserving layout code and only change event handling; keep model changes in `pws`.
+3. **UI & Visualization** (`editor/`, `pws/editor/`)
+   - `PWSEditor` — main frame managing tabs (controller editor, assembly panel, machine library)
+   - `PWSStateMachinePanel` — Swing canvas for graphical state and transition editing
+   - `pws/editor/annotation/*` — interactive in-place editors for guards/actions/semantics labels
+   - `PWSPanel` — assembly machine list with embedded state-machine editor for selected machines
+   - `MachineLibraryPanel` — reusable machine repository UI
 
-Please review and tell me if any sections need more detail or examples.
+## Key Patterns
+
+- **Explicit Model/View Separation:** Model logic lives in `machinery/` and `pws/`; UI in `pws/editor/` and `editor/`. Route model changes through setters on `PWSState`/`PWSTransition`; trigger UI repaints via panel callbacks.
+- **Interface Suffix Convention:** All contracts use `*Interface.java` naming (`StateInterface`, `TransitionInterface`, `AssemblyInterface`). When adding new types, follow this pattern.
+- **Annotation Widgets System:** `pws/editor/annotation/{Annotation,GuardAnnotation,ActionAnnotation,StateSemanticsAnnotation,TransitionSemanticsAnnotation}.java` extend `JComponent` and are draggable and snappable to grid. They hold references to model objects and update them on edit completion.
+- **Transient UI State:** `@transient` fields in model classes (e.g., `annotation` fields in `PWSState`) are UI-only; they are reconstructed by panels during rendering, not serialized.
+- **Semantics as Immutable Sets:** `Semantics.addConfiguration()` normalizes configurations (removes subsumed ones); configuration `implies()` checks entailment; `Semantics.bottom()` creates empty semantics.
+
+## Data Flow
+
+1. **Editing → Model:**
+   - User edits state/transition in canvas → `PWSStateMachinePanel` intercepts mouse events → creates/updates `PWSState` or `PWSTransition` → triggers `repaint()`
+   - In-place annotation editors (e.g., guard text field) call `transition.setGuardProposition()` directly
+
+2. **Model → Semantics:**
+   - `PWSStateMachine.getAssembly()` retrieves assembly; `AssemblyGenerator.generateAllAssemblies()` expands it into concrete configurations
+   - `SemanticsVisitor` traverses assembly machines and computes `constraintsSemantics` (from user constraint) and `stateSemantics` (inferred) per state
+   - `Semantics.addConfiguration()` adds configurations incrementally, auto-normalizing
+
+3. **Rendering:**
+   - `PWSStateMachinePanel.paintComponent()` calls `drawStateAnnotations()`, `drawTransitions()` to render states, transitions, and optional annotation overlays
+   - Annotations are positioned relative to their content; dragging them updates model via `setLocation()`
+
+## Critical Integration Points
+
+- **Assembly ↔ Multiple Machines:** `Assembly.stateMachines` is a `LinkedHashMap` keyed by machine ID. `MachineLibrary` stores reusable `StateMachine` templates. When adding a machine from the library to the assembly, clone it.
+- **Persistence:** `BinaryModelSerializer.saveModelAndLibrary(model, library, file)` writes a `PWSStateMachine` and its library as consecutive Java objects; load with `loadModelAndLibrary()` handling backward compatibility (older files lack library).
+- **Menu Actions:** `PWSEditor` menu bar (File, Edit, View) routes through `PWSStateMachineEditor` (base editor wrapper). Guard your handlers with null checks on `baseEditor`, `embeddedEditor`, and `assemblyPanel`.
+
+## Developer Workflows & Gotchas
+
+- **Swing Thread:** Always update UI on the AWT event thread. If computing semantics off-thread, wrap UI callbacks in `SwingUtilities.invokeLater()`.
+- **Serialization:** Add `serialVersionUID` to model classes to avoid deserialization failures after changes. Mark UI-only fields as `@transient`.
+- **Package-Scoped Visibility:** Most model and UI classes default to package scope. Avoid moving files across packages without updating import statements.
+- **Annotation Lifecycle:** Annotations are created on-demand in `PWSStateMachinePanel` and attached to states/transitions; they are *not* serialized (marked `transient`). Recreate them during rendering if needed.
+- **Assembly ID Consistency:** All `Semantics` and `Configuration` objects reference an assembly ID string. Verify ID matches when combining semantics across assembly boundaries.
+
+## Where to Look for Examples
+
+- `PWSEditor.java` — main frame layout, menu creation, save/load orchestration
+- `PWSStateMachinePanel.java` — mouse handlers for state/transition creation, annotation rendering, grid snapping
+- `pws/editor/annotation/{GuardAnnotation,ActionAnnotation}.java` — example annotation subclasses with custom painting and edit logic
+- `Semantics.java` — configuration normalization and implication logic
+- `Assembly.java` and `AssemblyGenerator.java` — assembly composition and instantiation patterns
+- `SaveLoadSmokeTest.java` — canonical save/load example
+
+## Common Tasks
+
+- **Add a new model property to states/transitions:** Define the field in `PWSState`/`PWSTransition`, add getter/setter, update relevant annotation widgets (if UI-editable), and update serialization if needed.
+- **Add a menu action:** Edit `PWSEditor.createMenuBar()`, register handler in appropriate listener, and call model/view methods.
+- **Extend semantics computation:** Add logic to `SemanticsVisitor` or `Semantics` class; update `PWSStateMachinePanel` rendering if annotation display changes.
+- **Refactor UI layout:** Preserve existing event handlers and model callbacks; only restructure `JPanel` composition and layout managers.
