@@ -413,7 +413,6 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     @Override
     public void mousePressed(MouseEvent e) {
         Point p = e.getPoint();
-        System.out.println("mousePressed: button=" + e.getButton() + ", point=" + p + ", isPopupTrigger=" + e.isPopupTrigger());
 
         // Check if left-click is near a transition control handle for bending.
         if (e.getButton() == MouseEvent.BUTTON1) {
@@ -718,16 +717,6 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     public void enableLinkModeWithSource(StateInterface sourceState) {
         linkMode = true;
         transitionSourceState = sourceState;
-        System.out.println("Link mode activated with source: " + sourceState.getName() + ". Now click the target state.");
-    }
-
-    /**
-     * Enable link mode with a predefined source state.
-     */
-    public void enableLinkModeWithSource(StateInterface sourceState) {
-        linkMode = true;
-        transitionSourceState = sourceState;
-        System.out.println("Link mode activated with source: " + sourceState.getName() + ". Now click the target state.");
     }
 
     private void showTransitionPopup(MouseEvent e, TransitionInterface t) {
