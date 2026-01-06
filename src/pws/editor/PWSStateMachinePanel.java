@@ -533,6 +533,20 @@ public class PWSStateMachinePanel extends StateMachinePanel {
 
     @Override
     public void mouseClicked(MouseEvent e) {
+        // Left-button double-click to rename a state
+        if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2) {
+            StateInterface state = getStateAt(e.getPoint());
+            if (state == null) return;
+            // Do not rename the pseudostate
+            if (state instanceof PWSState p && p.isPseudoState()) {
+                return;
+            }
+            String newName = JOptionPane.showInputDialog(this, "Rename state:", state.getName());
+            if (newName != null && !newName.trim().isEmpty()) {
+                ((machinery.State) state).setName(newName.trim());
+                repaint();
+            }
+        }
     }
 
     @Override
@@ -635,11 +649,60 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 return;
             }
         }
-        // Otherwise, show state popup.
+        // Otherwise, show state popup or empty‑space popup.
         StateInterface state = getStateAt(p);
         if (state != null) {
             showPopupMenuForState(e, state);
+        } else {
+            showEmptySpacePopup(e);
         }
+    }
+
+    private void showEmptySpacePopup(MouseEvent e) {
+        JPopupMenu popup = new JPopupMenu();
+        JMenuItem addStateItem = new JMenuItem("Add State");
+        addStateItem.addActionListener(ae -> {
+            addNewStateAt(e.getPoint());
+        });
+        popup.add(addStateItem);
+        popup.show(this, e.getX(), e.getY());
+    }
+
+    private void addNewStateAt(Point clickPoint) {
+        PWSStateMachine pwsMachine = (PWSStateMachine) stateMachine;
+        String name = generateDefaultStateName(pwsMachine);
+
+        int diameter = DIAMETER; // normal state size
+        int radius = diameter / 2;
+
+        int centerX = clickPoint.x;
+        int centerY = clickPoint.y;
+        if (snapToGrid) {
+            Point snapped = snap(new Point(centerX, centerY));
+            centerX = snapped.x;
+            centerY = snapped.y;
+        }
+        Point topLeft = new Point(centerX - radius, centerY - radius);
+
+        PWSState newState = new PWSState(name, topLeft, pwsMachine.getAssembly());
+        pwsMachine.addState(newState);
+        repaint();
+    }
+
+    private String generateDefaultStateName(PWSStateMachine machine) {
+        java.util.Set<String> names = new java.util.HashSet<>();
+        for (StateInterface si : machine.getStates()) {
+            names.add(si.getName());
+        }
+        String base = "S";
+        if (!names.contains(base)) {
+            return base;
+        }
+        int idx = 1;
+        while (names.contains(base + idx)) {
+            idx++;
+        }
+        return base + idx;
     }
 
     private void showTransitionPopup(MouseEvent e, TransitionInterface t) {
@@ -765,16 +828,6 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             popup.add(infoItem);
         } else {
             // Caso stato normale
-            JMenuItem editItem = new JMenuItem("Edit");
-            editItem.addActionListener(ae -> {
-                String newName = JOptionPane.showInputDialog(this, "New name for the state:", state.getName());
-                if (newName != null && !newName.trim().isEmpty()) {
-                    ((machinery.State) state).setName(newName);
-                    repaint();
-                }
-            });
-            popup.add(editItem);
-
             if (state instanceof PWSState) {
                 PWSState pwsState = (PWSState) state;
                 JMenuItem toggleAnnot;

@@ -717,37 +717,6 @@ public class PWSEditor extends JFrame {
         // --- Edit Menu (existing items) ---
         JMenu editMenu = new JMenu("Edit");
 
-        JMenuItem addStateItem = new JMenuItem("Add State");
-        addStateItem.addActionListener(e -> {
-            String name = JOptionPane.showInputDialog(PWSEditor.this, "Enter state name:");
-            if (name != null && !name.trim().isEmpty()) {
-                // create state at a default top-left, then align its CENTER to the grid if enabled
-                Point defaultTopLeft = new Point(50, 50);
-                PWSState newState = new PWSState(name, defaultTopLeft, pwsStateMachine.getAssembly());
-                pwsStateMachine.addState(newState);
-
-                // Try to align center to grid using the active panel's grid settings
-                try {
-                    PWSStateMachinePanel panel = (PWSStateMachinePanel) ((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
-                    if (panel.isSnapToGrid()) {
-                        int grid = panel.getGridSize();
-                        int diameter = 50; // must match StateMachinePanel.DIAMETER
-                        int radius = diameter / 2;
-                        Point center = new Point(defaultTopLeft.x + radius, defaultTopLeft.y + radius);
-                        int snappedCenterX = Math.round(center.x / (float) grid) * grid;
-                        int snappedCenterY = Math.round(center.y / (float) grid) * grid;
-                        Point newTopLeft = new Point(snappedCenterX - radius, snappedCenterY - radius);
-                        newState.setPosition(newTopLeft);
-                    }
-                } catch (ClassCastException ex) {
-                    // If casting fails, ignore snapping and leave default position.
-                }
-
-                baseEditor.getStateMachinePanel().repaint();
-            }
-        });
-        editMenu.add(addStateItem);
-
         JMenuItem addInitialTransitionItem = new JMenuItem("Add initial transition");
         addInitialTransitionItem.addActionListener(e ->
                 baseEditor.getStateMachinePanel().enableInitialTransitionMode());
@@ -872,6 +841,7 @@ public class PWSEditor extends JFrame {
         }
         return null;
     }
+
 
     public static void main(String[] args) {
         // Simplify logs: only show the message text
