@@ -49,6 +49,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         // Enable keyboard focus so arrow keys translate the whole diagram
         setFocusable(true);
         // Mouse listeners are inherited from StateMachinePanel.
+        restoreVisibleStateAnnotations();
     }
 
     /**
@@ -68,6 +69,40 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     /** Allow annotations to find the underlying state machine. */
     public PWSStateMachine getStateMachine() {
         return (PWSStateMachine) stateMachine;
+    }
+
+    /**
+     * Recreate and attach dashboards for states that were marked visible but
+     * whose transient annotation component was not restored (e.g., after load).
+     */
+    private void restoreVisibleStateAnnotations() {
+        Assembly assembly = ((PWSStateMachine) stateMachine).getAssembly();
+        for (StateInterface si : stateMachine.getStates()) {
+            if (si instanceof PWSState pwsState) {
+                if (!pwsState.isAnnotationVisible()) {
+                    continue;
+                }
+
+                StateSemanticsAnnotation annot = pwsState.getAnnotation();
+                if (annot == null) {
+                    annot = new StateSemanticsAnnotation(pwsState, assembly, this);
+
+                    // Default positioning: center aligned above the state
+                    Point pos = ((machinery.State) pwsState).getPosition();
+                    int d = pwsState.getName().equals("PseudoState") ? PSEUDO_DIAMETER : DIAMETER;
+                    int stateCenter = pos.x + d / 2;
+                    int annotCenterX = stateCenter;
+                    int annotCenterY = pos.y - 60;
+                    annot.setBounds(annotCenterX - 60, annotCenterY - 15, 120, 30);
+
+                    pwsState.setAnnotation(annot);
+                    add(annot);
+                } else if (annot.getParent() != this) {
+                    // If the annotation exists but isn't attached to this panel, attach it.
+                    add(annot);
+                }
+            }
+        }
     }
 
     @Override
@@ -324,8 +359,9 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         if (pt.getGuardAnnotation() == null) {
             // Compute the point on the curve for the GuardAnnotation (using t = 0.2)
             Point guardPoint = computePointOnCurve(p0, cp, p2, 0.2);
-            int guardX = guardPoint.x - 60; // adjust horizontal offset
-            int guardY = guardPoint.y - 20; // adjust vertical offset
+            // Center the annotation on the grid point by subtracting half the width/height
+            int guardX = guardPoint.x - 60; // center horizontal (120 / 2 = 60)
+            int guardY = guardPoint.y - 10; // center vertical (20 / 2 = 10)
             GuardAnnotation guardAnnot = new GuardAnnotation(guardProp, assembly, newGuard -> {
                 pt.setGuardProposition(newGuard);
             });
@@ -342,8 +378,9 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         ActionList actions = pt.getActionList();
         if (pt.getActionAnnotation() == null) {
             Point actionPoint = computePointOnCurve(p0, cp, p2, 0.5);
-            int actionX = actionPoint.x - 75; // adatta l'offset orizzontale
-            int actionY = actionPoint.y + 20; // adatta l'offset verticale
+            // Center the annotation on the grid point by subtracting half the width/height
+            int actionX = actionPoint.x - 75; // center horizontal (150 / 2 = 75)
+            int actionY = actionPoint.y - 10; // center vertical (20 / 2 = 10)
             ActionAnnotation actionAnnot = new ActionAnnotation(actions, assembly, newActions -> {
                 pt.setActionList(newActions);
             });
@@ -358,8 +395,9 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         Semantics semProp = pt.getTransitionSemantics();
         if (pt.getSemanticsAnnotation() == null) {
             Point semPoint = computePointOnCurve(p0, cp, p2, 0.8);
-            int semX = semPoint.x - 50; // adatta l'offset orizzontale
-            int semY = semPoint.y - 40; // adatta l'offset verticale
+            // Center the annotation on the grid point by subtracting half the width/height
+            int semX = semPoint.x - 75; // center horizontal (150 / 2 = 75)
+            int semY = semPoint.y - 10; // center vertical (20 / 2 = 10)
             TransitionSemanticsAnnotation semAnnot = new TransitionSemanticsAnnotation(semProp);
             semAnnot.setBounds(semX, semY, 150, 20);
             semAnnot.setVisible(false);
@@ -692,10 +730,15 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                     // Crea l'annotazione se non esiste e la rende visibile
                     StateSemanticsAnnotation annot = pwsState.getAnnotation();
                     if (annot == null) {
-                        annot = new StateSemanticsAnnotation(pwsState);
-                        // Posiziona l'annotazione vicino al pseudostato
+                        annot = new StateSemanticsAnnotation(pwsState, ((PWSStateMachine) stateMachine).getAssembly(), this);
+                        // Position the annotation with its center on the grid point
                         Point pos = ((machinery.State) pwsState).getPosition();
-                        annot.setBounds(pos.x, pos.y - 40, 120, 30);
+                        int d = pwsState.getName().equals("PseudoState") ? PSEUDO_DIAMETER : DIAMETER;
+                        int stateCenter = pos.x + d / 2;
+                        // Center the annotation above the state (60 pixels above center)
+                        int annotCenterX = stateCenter;
+                        int annotCenterY = pos.y - 60;
+                        annot.setBounds(annotCenterX - 60, annotCenterY - 15, 120, 30);
                         pwsState.setAnnotation(annot);
                         add(annot);
                         System.out.println("Created new StateAnnotation for " + pwsState.getName());
@@ -733,15 +776,6 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             popup.add(editItem);
 
             if (state instanceof PWSState) {
-                JMenuItem editConstraintsItem = new JMenuItem("Edit Constraints Semantics");
-                editConstraintsItem.addActionListener(ae -> {
-                    ConstraintsEditorDialog dialog = new ConstraintsEditorDialog((PWSState) state,((PWSStateMachine) stateMachine).getAssembly());
-                    dialog.setVisible(true);
-                });
-                popup.add(editConstraintsItem);
-            }
-
-            if (state instanceof PWSState) {
                 PWSState pwsState = (PWSState) state;
                 JMenuItem toggleAnnot;
                 if (pwsState.isAnnotationVisible()) {
@@ -754,9 +788,14 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                     pwsState.setAnnotationVisible(newVisible);
                     if (newVisible) {
                         if (pwsState.getAnnotation() == null) {
-                            StateSemanticsAnnotation annot = new StateSemanticsAnnotation(pwsState);
+                            StateSemanticsAnnotation annot = new StateSemanticsAnnotation(pwsState, ((PWSStateMachine) stateMachine).getAssembly(), this);
                             Point pos = ((machinery.State) pwsState).getPosition();
-                            annot.setBounds(pos.x, pos.y - 40, 120, 30);
+                            int d = pwsState.getName().equals("PseudoState") ? PSEUDO_DIAMETER : DIAMETER;
+                            int stateCenter = pos.x + d / 2;
+                            // Center the annotation above the state
+                            int annotCenterX = stateCenter;
+                            int annotCenterY = pos.y - 60;
+                            annot.setBounds(annotCenterX - 60, annotCenterY - 15, 120, 30);
                             pwsState.setAnnotation(annot);
                             add(annot);
                             System.out.println("Created new Annotation for " + pwsState.getName());
@@ -897,7 +936,10 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                     PWSState pState = (PWSState) s;
                     if (annotBounds != null) {
                         if (pState.getAnnotation() == null) {
-                            StateSemanticsAnnotation annot = new StateSemanticsAnnotation(pState);
+                            StateSemanticsAnnotation annot = new StateSemanticsAnnotation(
+                                pState,
+                                ((PWSStateMachine) stateMachine).getAssembly(),
+                                this);
                             annot.setBounds(annotBounds);
                             annot.setVisible(false);
                             pState.setAnnotation(annot);

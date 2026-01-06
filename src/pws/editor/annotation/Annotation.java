@@ -34,13 +34,27 @@ public class Annotation<T> extends JComponent implements Serializable {
                 }
 
                 // Snap annotation to grid if parent panel supports it
+                // The center of the annotation is snapped to the grid
                 java.awt.Container parent = SwingUtilities.getAncestorOfClass(StateMachinePanel.class, Annotation.this);
                 if (parent instanceof StateMachinePanel panel && panel.isSnapToGrid()) {
                     int grid = panel.getGridSize();
                     int x = getX();
                     int y = getY();
-                    int snappedX = Math.round(x / (float) grid) * grid;
-                    int snappedY = Math.round(y / (float) grid) * grid;
+                    int width = getWidth();
+                    int height = getHeight();
+                    
+                    // Calculate center position
+                    int centerX = x + width / 2;
+                    int centerY = y + height / 2;
+                    
+                    // Snap center to grid
+                    int snappedCenterX = Math.round(centerX / (float) grid) * grid;
+                    int snappedCenterY = Math.round(centerY / (float) grid) * grid;
+                    
+                    // Calculate new top-left position from snapped center
+                    int snappedX = snappedCenterX - width / 2;
+                    int snappedY = snappedCenterY - height / 2;
+                    
                     setLocation(snappedX, snappedY);
                     if (getParent() != null) {
                         getParent().repaint();

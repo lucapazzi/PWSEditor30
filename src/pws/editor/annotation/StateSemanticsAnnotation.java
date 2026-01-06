@@ -20,20 +20,36 @@ import java.awt.Color;
 import assembly.Assembly;
 
 public class StateSemanticsAnnotation extends Annotation<PWSState> {
+    private Assembly assembly;
+    private PWSStateMachinePanel panel;
 
     public StateSemanticsAnnotation(PWSState content) {
+        this(content, null, null);
+    }
+
+    public StateSemanticsAnnotation(PWSState content, Assembly assembly, PWSStateMachinePanel panel) {
         super(content);
+        this.assembly = assembly;
+        this.panel = panel;
         setOpaque(true);
         setBackground(Color.WHITE);
     }
 
     @Override
     protected void showPopup(MouseEvent e) {
-        // Create a popup with a single disabled menu item.
+        // Create a popup with menu items for editing constraints
         JPopupMenu popup = new JPopupMenu();
-        JMenuItem notModifiable = new JMenuItem("Annotazione non modificabile");
-        notModifiable.setEnabled(false);
-        popup.add(notModifiable);
+        
+        if (assembly != null && panel != null) {
+            JMenuItem editConstraintsItem = new JMenuItem("Edit Constraints Semantics");
+            editConstraintsItem.addActionListener(ae -> {
+                pws.editor.ConstraintsEditorDialog dialog = 
+                    new pws.editor.ConstraintsEditorDialog(content, assembly);
+                dialog.setVisible(true);
+            });
+            popup.add(editConstraintsItem);
+        }
+        
         popup.show(this, e.getX(), e.getY());
     }
 
