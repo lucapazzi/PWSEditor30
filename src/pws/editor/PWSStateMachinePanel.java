@@ -611,6 +611,13 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 System.out.println("Link mode: Source state selected: " + transitionSourceState.getName());
             } else {
                 if (clickedState != transitionSourceState) {
+                    // Prevent pseudostate as target
+                    if (clickedState instanceof PWSState p && p.isPseudoState()) {
+                        JOptionPane.showMessageDialog(this, "Cannot create transition to PseudoState.");
+                        linkMode = false;
+                        transitionSourceState = null;
+                        return;
+                    }
                     String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave blank for autonomous):");
                     boolean autonomous = transitionSourceState.getName().equals("PseudoState") ||
                             (trigger == null || trigger.trim().isEmpty());
@@ -703,6 +710,24 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             idx++;
         }
         return base + idx;
+    }
+
+    /**
+     * Enable link mode with a predefined source state.
+     */
+    public void enableLinkModeWithSource(StateInterface sourceState) {
+        linkMode = true;
+        transitionSourceState = sourceState;
+        System.out.println("Link mode activated with source: " + sourceState.getName() + ". Now click the target state.");
+    }
+
+    /**
+     * Enable link mode with a predefined source state.
+     */
+    public void enableLinkModeWithSource(StateInterface sourceState) {
+        linkMode = true;
+        transitionSourceState = sourceState;
+        System.out.println("Link mode activated with source: " + sourceState.getName() + ". Now click the target state.");
     }
 
     private void showTransitionPopup(MouseEvent e, TransitionInterface t) {
@@ -823,11 +848,27 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             });
             popup.add(toggleAnnotItem);
 
+            // Add Initial Transition item
+            JMenuItem addInitialTransItem = new JMenuItem("Add initial transition");
+            addInitialTransItem.addActionListener(ae -> {
+                enableInitialTransitionMode();
+            });
+            popup.add(addInitialTransItem);
+
             JMenuItem infoItem = new JMenuItem("Pseudo-state cannot be deleted");
             infoItem.setEnabled(false);
             popup.add(infoItem);
         } else {
             // Caso stato normale
+            // Create transition item - only if state is not the pseudostate
+            if (!(state instanceof PWSState p && p.isPseudoState())) {
+                JMenuItem createTransItem = new JMenuItem("Create transition");
+                createTransItem.addActionListener(ae -> {
+                    enableLinkModeWithSource(state);
+                });
+                popup.add(createTransItem);
+            }
+
             if (state instanceof PWSState) {
                 PWSState pwsState = (PWSState) state;
                 JMenuItem toggleAnnot;

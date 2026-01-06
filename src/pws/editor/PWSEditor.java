@@ -717,11 +717,6 @@ public class PWSEditor extends JFrame {
         // --- Edit Menu (existing items) ---
         JMenu editMenu = new JMenu("Edit");
 
-        JMenuItem addInitialTransitionItem = new JMenuItem("Add initial transition");
-        addInitialTransitionItem.addActionListener(e ->
-                baseEditor.getStateMachinePanel().enableInitialTransitionMode());
-        editMenu.add(addInitialTransitionItem);
-
         editMenu.addSeparator();
 
 //        JMenuItem addTransitionItem = new JMenuItem("Aggiungi Transizione");
@@ -750,10 +745,6 @@ public class PWSEditor extends JFrame {
 //            }
 //        });
 //        editMenu.add(addTransitionItem);
-
-        JMenuItem linkModeItem = new JMenuItem("Create transition (link mode)");
-        linkModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().enableLinkMode());
-        editMenu.add(linkModeItem);
 
         JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Edit mode", true);
         editModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().setShowControlHandles(editModeItem.isSelected()));
