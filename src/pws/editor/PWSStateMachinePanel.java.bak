@@ -258,13 +258,13 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             drawPWSTransitionAnnotations(g2d, pt, p0, cp, p2);
         }
 
-        // Draw control handle (always visible for editing)
-        drawControlHandle(g2d, cp);
-        
-        // For self-loops, draw endpoint handles if enabled
-        if (showControlHandles && isSelfLoop) {
-            drawSelfLoopEndpointHandle(g2d, p0);  // start point
-            drawSelfLoopEndpointHandle(g2d, p2);  // end point
+        if (showControlHandles) {
+            drawControlHandle(g2d, cp);
+            // For self-loops, also draw handles on start and end points
+            if (isSelfLoop) {
+                drawSelfLoopEndpointHandle(g2d, p0);  // start point
+                drawSelfLoopEndpointHandle(g2d, p2);  // end point
+            }
         }
 
         // Disegna le linee di collegamento tra le annotazioni e l'arco,
@@ -865,7 +865,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         popup.addSeparator();
         
         // Voce per mostrare/nascondere i control handles
-        JMenuItem toggleHandlesItem = new JMenuItem(showControlHandles ? "Hide Self-Loop Handles" : "Show Self-Loop Handles");
+        JMenuItem toggleHandlesItem = new JMenuItem(showControlHandles ? "Hide Control Handles" : "Show Control Handles");
         toggleHandlesItem.addActionListener(ae -> {
             showControlHandles = !showControlHandles;
             repaint();
@@ -1276,16 +1276,5 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         updateTriggerLabels();
         revalidate();
         repaint();
-    }
-    
-    /**
-     * Draws a draggable endpoint handle for self-loops.
-     */
-    private void drawSelfLoopEndpointHandle(Graphics2D g2d, Point p) {
-        g2d.setColor(Color.BLUE);
-        int handleRadius = 4;
-        g2d.fillOval(p.x - handleRadius, p.y - handleRadius, handleRadius * 2, handleRadius * 2);
-        g2d.setColor(Color.BLACK);
-        g2d.drawOval(p.x - handleRadius, p.y - handleRadius, handleRadius * 2, handleRadius * 2);
     }
 }

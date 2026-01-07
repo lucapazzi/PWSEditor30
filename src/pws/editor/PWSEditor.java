@@ -67,7 +67,8 @@ public class PWSEditor extends JFrame {
         }
     }
     private void initComponents() {
-        setJMenuBar(createMenuBar());
+        // Don't set the menu bar at the frame level anymore
+        // setJMenuBar(createMenuBar());
 
         // Left editor area (wrapped with a header)
         baseEditor = new PWSStateMachineEditor(pwsStateMachine, "PWSMachine");
@@ -75,10 +76,19 @@ public class PWSEditor extends JFrame {
         editorInner.add(baseEditor.getContentPane(), BorderLayout.CENTER);
 
         JPanel leftWrapper = new JPanel(new BorderLayout());
+        
+        // Top section: header + menu bar
+        JPanel leftTopSection = new JPanel(new BorderLayout());
         JLabel leftHeader = new JLabel("Controller", SwingConstants.CENTER);
         leftHeader.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         leftHeader.setFont(leftHeader.getFont().deriveFont(Font.BOLD));
-        leftWrapper.add(leftHeader, BorderLayout.NORTH);
+        leftTopSection.add(leftHeader, BorderLayout.NORTH);
+        
+        // Add menu bar below the header
+        JMenuBar controllerMenuBar = createMenuBar();
+        leftTopSection.add(controllerMenuBar, BorderLayout.SOUTH);
+        
+        leftWrapper.add(leftTopSection, BorderLayout.NORTH);
         leftWrapper.add(editorInner, BorderLayout.CENTER);
 
         // Ensure clicks anywhere on the left editor area transfer focus to the controller's panel
@@ -107,6 +117,7 @@ public class PWSEditor extends JFrame {
             }
         };
         // Install listener on header and the editor wrapper so clicks reach the state panel
+        leftTopSection.addMouseListener(focusRequester);
         leftHeader.addMouseListener(focusRequester);
         editorInner.addMouseListener(focusRequester);
         leftWrapper.addMouseListener(focusRequester);
@@ -675,6 +686,13 @@ public class PWSEditor extends JFrame {
         // SVG export removed — prefer PDF export
 
         // New: Export as PDF menu item.
+        // PDF export preference (vector vs raster)
+        JCheckBoxMenuItem preferVectorItem = new JCheckBoxMenuItem("Prefer vector PDF export", false);
+        preferVectorItem.addActionListener(e -> {
+            utility.PDFExporter.setPreferVector(preferVectorItem.isSelected());
+        });
+        fileMenu.add(preferVectorItem);
+
         JMenuItem exportPDFItem = new JMenuItem("Export as PDF");
         exportPDFItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
@@ -696,6 +714,12 @@ public class PWSEditor extends JFrame {
                     utility.PDFExporter.exportPanelToPDF(panel, file);
                     JOptionPane.showMessageDialog(PWSEditor.this,
                             "PDF file saved successfully.");
+                } catch (UnsupportedOperationException uoe) {
+                    // PDF export not implemented due to missing dependency (e.g., PDFBox)
+                    uoe.printStackTrace();
+                    JOptionPane.showMessageDialog(PWSEditor.this,
+                            "PDF export is not available: " + uoe.getMessage(),
+                            "Not Available", JOptionPane.WARNING_MESSAGE);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                     JOptionPane.showMessageDialog(PWSEditor.this,

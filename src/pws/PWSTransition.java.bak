@@ -123,20 +123,4 @@ public class PWSTransition extends Transition implements Serializable {
     public void setSemanticsAnnotation(TransitionSemanticsAnnotation semanticsAnnotation) {
         this.semanticsAnnotation = semanticsAnnotation;
     }
-    
-    public Double getSelfLoopStartAngle() {
-        return selfLoopStartAngle;
-    }
-    
-    public void setSelfLoopStartAngle(Double angle) {
-        this.selfLoopStartAngle = angle;
-    }
-    
-    public Double getSelfLoopEndAngle() {
-        return selfLoopEndAngle;
-    }
-    
-    public void setSelfLoopEndAngle(Double angle) {
-        this.selfLoopEndAngle = angle;
-    }
 }

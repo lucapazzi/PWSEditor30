@@ -288,10 +288,8 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             g2d.drawOval(p0.x - circleRadius, p0.y - circleRadius, circleRadius * 2, circleRadius * 2);
         }
 
-        // Draw control handles if enabled.
-        if (showControlHandles) {
-            drawControlHandle(g2d, cp);
-        }
+        // Draw control handle (always visible for editing)
+        drawControlHandle(g2d, cp);
     }
 
     private Point computeControlPoint(Point centerSource, Point centerTarget) {
@@ -306,6 +304,8 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         int controlY = (int) (midY + offset * (dx / distance));
         return new Point(controlX, controlY);
     }
+    
+
 
     private Point computeStartPoint(Point centerSource, Point cp, int offset) {
         double d0x = cp.x - centerSource.x;
@@ -685,6 +685,16 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             repaint();
         });
         popup.add(deleteItem);
+        
+        popup.addSeparator();
+        
+        // Voce per mostrare/nascondere i control handles
+        JMenuItem toggleHandlesItem = new JMenuItem(showControlHandles ? "Hide Control Handles" : "Show Control Handles");
+        toggleHandlesItem.addActionListener(ae -> {
+            showControlHandles = !showControlHandles;
+            repaint();
+        });
+        popup.add(toggleHandlesItem);
 
         // Se necessario, qui puoi aggiungere ulteriori voci per gestire annotazioni (guard, action, semantics),
         // per esempio "Toggle Guard Annotation", "Toggle Action Annotation", ecc.
