@@ -13,6 +13,7 @@ public interface TransitionInterface extends Serializable {
      * altrimenti, può restituire null o una stringa vuota.
      */
     String getTriggerEvent();
+    void setTriggerEvent(String event);
 
     void fire();
 

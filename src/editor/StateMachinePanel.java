@@ -721,7 +721,7 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         } else {
             // Normal state menu
             // Create transition item - only if state is not the pseudostate
-            JMenuItem createTransItem = new JMenuItem("Create transition");
+            JMenuItem createTransItem = new JMenuItem("Create transition from this state");
             createTransItem.addActionListener(ae -> {
                 enableLinkModeWithSource(state);
             });

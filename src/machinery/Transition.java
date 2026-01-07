@@ -85,6 +85,11 @@ public class Transition implements TransitionInterface {
     }
 
     @Override
+    public void setTriggerEvent(String event) {
+        this.triggerEvent = event;
+    }
+
+    @Override
     public void fire() {
         System.out.println("Transizione attivata: " + source.getName() + " -> " + target.getName());
     }

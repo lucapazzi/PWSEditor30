@@ -39,6 +39,21 @@ public class DraggableTriggerLabel extends JLabel {
                     if (getParent() != null) getParent().requestFocusInWindow();
                 }
             }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                // Double-click (left button) edits the trigger event text
+                if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2 && associatedTransition != null) {
+                    String current = associatedTransition.getTriggerEvent();
+                    String input = JOptionPane.showInputDialog(DraggableTriggerLabel.this, "Edit trigger event:", current);
+                    if (input != null) {
+                        associatedTransition.setTriggerEvent(input);
+                        setText("<html><b><u>" + input + "</u></b></html>");
+                        revalidate();
+                        repaint();
+                    }
+                }
+            }
         });
         addMouseMotionListener(new MouseAdapter() {
             @Override
