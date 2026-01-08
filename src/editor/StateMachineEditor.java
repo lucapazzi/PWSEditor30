@@ -187,7 +187,7 @@ public class StateMachineEditor extends JFrame {
 
 // 4. Edit mode (checkbox)
         JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Edit mode", true);
-        editModeItem.addActionListener(e -> statePanel.setShowControlHandles(editModeItem.isSelected()));
+        editModeItem.addActionListener(e -> statePanel.setEditMode(editModeItem.isSelected()));
         editMenu.add(editModeItem);
 
         menuBar.add(editMenu);

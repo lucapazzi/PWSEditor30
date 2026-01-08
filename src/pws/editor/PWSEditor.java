@@ -771,7 +771,7 @@ public class PWSEditor extends JFrame {
 //        editMenu.add(addTransitionItem);
 
         JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Edit mode", true);
-        editModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().setShowControlHandles(editModeItem.isSelected()));
+        editModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().setEditMode(editModeItem.isSelected()));
         editMenu.add(editModeItem);
 
         menuBar.add(editMenu);

@@ -29,8 +29,11 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
     protected TransitionInterface selectedTransitionForControl = null;
     protected Point controlDragOffset = null;
 
-    // Flag to show control handles
+    // Flag to show control handles (for self-loop endpoints in PWS)
     protected boolean showControlHandles = true;
+
+    // Flag to enable/disable edit mode (controls green control point visibility)
+    protected boolean editMode = true;
 
     // Grid and snapping
     protected boolean showGrid = true;
@@ -109,6 +112,15 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
 
     public void setShowControlHandles(boolean showControlHandles) {
         this.showControlHandles = showControlHandles;
+        repaint();
+    }
+
+    public boolean isEditMode() {
+        return editMode;
+    }
+
+    public void setEditMode(boolean editMode) {
+        this.editMode = editMode;
         repaint();
     }
 
@@ -288,8 +300,10 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             g2d.drawOval(p0.x - circleRadius, p0.y - circleRadius, circleRadius * 2, circleRadius * 2);
         }
 
-        // Draw control handle (always visible for editing)
-        drawControlHandle(g2d, cp);
+        // Draw control handle only if edit mode is enabled
+        if (editMode) {
+            drawControlHandle(g2d, cp);
+        }
     }
 
     private Point computeControlPoint(Point centerSource, Point centerTarget) {
@@ -687,14 +701,6 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         popup.add(deleteItem);
         
         popup.addSeparator();
-        
-        // Voce per mostrare/nascondere i control handles
-        JMenuItem toggleHandlesItem = new JMenuItem(showControlHandles ? "Hide Control Handles" : "Show Control Handles");
-        toggleHandlesItem.addActionListener(ae -> {
-            showControlHandles = !showControlHandles;
-            repaint();
-        });
-        popup.add(toggleHandlesItem);
 
         // Se necessario, qui puoi aggiungere ulteriori voci per gestire annotazioni (guard, action, semantics),
         // per esempio "Toggle Guard Annotation", "Toggle Action Annotation", ecc.

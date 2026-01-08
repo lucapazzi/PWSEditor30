@@ -258,8 +258,10 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             drawPWSTransitionAnnotations(g2d, pt, p0, cp, p2);
         }
 
-        // Draw control handle (always visible for editing)
-        drawControlHandle(g2d, cp);
+        // Draw control handle only when edit mode is enabled
+        if (isEditMode()) {
+            drawControlHandle(g2d, cp);
+        }
         
         // For self-loops, draw endpoint handles if enabled
         if (showControlHandles && isSelfLoop) {
