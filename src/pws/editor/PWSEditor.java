@@ -743,15 +743,15 @@ public class PWSEditor extends JFrame {
 
         editMenu.addSeparator();
 
-//        JMenuItem addTransitionItem = new JMenuItem("Aggiungi Transizione");
+//        JMenuItem addTransitionItem = new JMenuItem("Add Transition");
 //        addTransitionItem.addActionListener(e -> {
-//            String sourceName = JOptionPane.showInputDialog(PWSEditor.this, "Inserisci il nome dello stato sorgente:");
-//            String targetName = JOptionPane.showInputDialog(PWSEditor.this, "Inserisci il nome dello stato target:");
+//            String sourceName = JOptionPane.showInputDialog(PWSEditor.this, "Enter the source state name:");
+//            String targetName = JOptionPane.showInputDialog(PWSEditor.this, "Enter the target state name:");
 //            if (sourceName != null && targetName != null) {
 //                machinery.StateInterface source = findStateByName(sourceName);
 //                machinery.StateInterface target = findStateByName(targetName);
 //                if (source != null && target != null) {
-//                    String trigger = JOptionPane.showInputDialog(PWSEditor.this, "Inserisci il trigger event (lascia vuoto per interna):");
+//                    String trigger = JOptionPane.showInputDialog(PWSEditor.this, "Enter trigger event (leave blank for internal):");
 //                    boolean autonomous = (trigger == null || trigger.trim().isEmpty());
 //                    pws.PWSTransition newTransition = new pws.PWSTransition(source, target, autonomous, trigger);
 //                    GuardActionsPair gap = ((Assembly) pwsStateMachine.getAssembly()).askForGuardAndActions();

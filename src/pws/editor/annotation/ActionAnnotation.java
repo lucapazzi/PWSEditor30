@@ -25,8 +25,8 @@ public class ActionAnnotation extends Annotation<ActionList> {
     protected void showPopup(MouseEvent e) {
         JPopupMenu popup = new JPopupMenu();
 
-        // Sezione "Inserisci"
-        JMenuItem insertLabel = new JMenuItem("Inserisci");
+        // Insert section
+        JMenuItem insertLabel = new JMenuItem("Insert");
         insertLabel.setEnabled(false);
         popup.add(insertLabel);
 
@@ -46,7 +46,7 @@ public class ActionAnnotation extends Annotation<ActionList> {
             }
         }
         if (actionsToInsert.isEmpty()) {
-            JMenuItem noInsert = new JMenuItem("Nessuna azione disponibile");
+            JMenuItem noInsert = new JMenuItem("No available actions");
             noInsert.setEnabled(false);
             popup.add(noInsert);
         } else {
@@ -65,12 +65,12 @@ public class ActionAnnotation extends Annotation<ActionList> {
 
         popup.addSeparator();
 
-        // Sezione "Rimuovi"
-        JMenuItem removeLabel = new JMenuItem("Rimuovi");
+        // Remove section
+        JMenuItem removeLabel = new JMenuItem("Remove");
         removeLabel.setEnabled(false);
         popup.add(removeLabel);
         if (current.isEmpty()) {
-            JMenuItem noRemove = new JMenuItem("Nessuna azione inserita");
+            JMenuItem noRemove = new JMenuItem("No actions added");
             noRemove.setEnabled(false);
             popup.add(noRemove);
         } else {

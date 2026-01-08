@@ -34,7 +34,7 @@ public class GuardAnnotation extends Annotation<SMProposition> {
         if (content instanceof TrueProposition) {
             List list = assembly.getAssemblyGuards();
             if (list.isEmpty()) {
-                JMenuItem none = new JMenuItem("Nessuna guardia disponibile");
+                JMenuItem none = new JMenuItem("No guards available");
                 none.setEnabled(false);
                 popup.add(none);
             } else {
@@ -54,7 +54,7 @@ public class GuardAnnotation extends Annotation<SMProposition> {
                 }
             }
         } else {
-            JMenuItem removeItem = new JMenuItem("Rimuovi guardia");
+            JMenuItem removeItem = new JMenuItem("Remove guard");
             removeItem.addActionListener(ev -> {
                 SMProposition defaultGuard = new TrueProposition();
                 setContent(defaultGuard);
