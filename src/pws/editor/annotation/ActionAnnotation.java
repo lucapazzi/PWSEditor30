@@ -8,17 +8,37 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
+import pws.PWSState;
+import pws.editor.semantics.Configuration;
+import pws.editor.semantics.Semantics;
+import smalgebra.BasicStateProposition;
+import machinery.StateMachine;
 
 public class ActionAnnotation extends Annotation<ActionList> {
     private AssemblyInterface assembly;
     private Consumer<ActionList> updateCallback; // Callback per aggiornare il modello
+    // Optional associated transition (when this annotation is attached to a transition)
+    private machinery.TransitionInterface associatedTransition;
 
     public ActionAnnotation(ActionList content, AssemblyInterface assembly, Consumer<ActionList> updateCallback) {
         super(content);
         this.assembly = assembly;
         this.updateCallback = updateCallback;
+        this.associatedTransition = null;
+    }
+
+    /**
+     * Constructor for annotations attached to a specific transition.
+     */
+    public ActionAnnotation(ActionList content, AssemblyInterface assembly, Consumer<ActionList> updateCallback, machinery.TransitionInterface associatedTransition) {
+        super(content);
+        this.assembly = assembly;
+        this.updateCallback = updateCallback;
+        this.associatedTransition = associatedTransition;
     }
 
     @Override
@@ -33,16 +53,60 @@ public class ActionAnnotation extends Annotation<ActionList> {
         List<Action> allActions = assembly.getAssemblyActions();
         ActionList current = getContent();
         List<Action> actionsToInsert = new ArrayList<>();
-        for (Action a : allActions) {
-            boolean alreadyPresent = false;
-            for (Action act : current) {
-                if (act.getMachineId().equals(a.getMachineId())) {
-                    alreadyPresent = true;
-                    break;
+
+        // If this annotation is attached to a transition with a PWS source state,
+        // restrict insertable actions to events reachable from states in the source state's semantics.
+        boolean filteredBySemantics = false;
+        if (associatedTransition != null) {
+            machinery.StateInterface src = associatedTransition.getSource();
+            if (src instanceof PWSState) {
+                Semantics sem = ((PWSState) src).getStateSemantics();
+                if (sem != null && !sem.getConfigurations().isEmpty()) {
+                    filteredBySemantics = true;
+                    Set<String> candidateStrings = new LinkedHashSet<>();
+                    for (Configuration conf : sem.getConfigurations()) {
+                        for (BasicStateProposition bsp : conf.getBasicStatePropositions()) {
+                            String machineId = bsp.getMachineId();
+                            String stateName = bsp.getStateName();
+                            StateMachine machine = assembly.getStateMachines().get(machineId);
+                            if (machine == null) continue;
+                            for (machinery.TransitionInterface t : machine.getTransitions()) {
+                                if (t.isTriggerable() && t.getSource() != null && stateName.equals(t.getSource().getName())) {
+                                    candidateStrings.add(machineId + "." + t.getTriggerEvent());
+                                }
+                            }
+                        }
+                    }
+                    // Map assembly actions to the candidate strings, avoiding actions from machines already present in the list.
+                    for (Action a : allActions) {
+                        boolean alreadyPresent = false;
+                        for (Action act : current) {
+                            if (act.getMachineId().equals(a.getMachineId())) {
+                                alreadyPresent = true;
+                                break;
+                            }
+                        }
+                        if (!alreadyPresent && candidateStrings.contains(a.toString())) {
+                            actionsToInsert.add(a);
+                        }
+                    }
                 }
             }
-            if (!alreadyPresent) {
-                actionsToInsert.add(a);
+        }
+
+        // Fallback: if semantics-based filtering produced no candidates, use the previous behavior.
+        if (!filteredBySemantics || actionsToInsert.isEmpty()) {
+            for (Action a : allActions) {
+                boolean alreadyPresent = false;
+                for (Action act : current) {
+                    if (act.getMachineId().equals(a.getMachineId())) {
+                        alreadyPresent = true;
+                        break;
+                    }
+                }
+                if (!alreadyPresent) {
+                    actionsToInsert.add(a);
+                }
             }
         }
         if (actionsToInsert.isEmpty()) {

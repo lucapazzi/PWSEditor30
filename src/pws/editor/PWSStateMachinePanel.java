@@ -437,7 +437,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             int guardY = guardPoint.y - 10; // center vertical (20 / 2 = 10)
             GuardAnnotation guardAnnot = new GuardAnnotation(guardProp, assembly, newGuard -> {
                 pt.setGuardProposition(newGuard);
-            });
+            }, pt);
             guardAnnot.setBounds(guardX, guardY, 120, 20);
             // For both reactive and triggerable transitions, pass guardProp directly.
             guardAnnot.setContent(guardProp);
@@ -456,7 +456,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             int actionY = actionPoint.y - 10; // center vertical (20 / 2 = 10)
             ActionAnnotation actionAnnot = new ActionAnnotation(actions, assembly, newActions -> {
                 pt.setActionList(newActions);
-            });
+            }, pt);
             actionAnnot.setBounds(actionX, actionY, 150, 20);
             pt.setActionAnnotation(actionAnnot);
             add(actionAnnot);
@@ -1187,7 +1187,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                         if (guardBounds != null) {
                             if (pt.getGuardAnnotation() == null) {
                                 SMProposition guardProp = pt.getGuardProposition();
-                                GuardAnnotation guardAnnot = new GuardAnnotation(guardProp, ((PWSStateMachine)stateMachine).getAssembly(), newGuard -> pt.setGuardProposition(newGuard));
+                                GuardAnnotation guardAnnot = new GuardAnnotation(guardProp, ((PWSStateMachine)stateMachine).getAssembly(), newGuard -> pt.setGuardProposition(newGuard), pt);
                                 guardAnnot.setBounds(guardBounds);
                                 pt.setGuardAnnotation(guardAnnot);
                                 add(guardAnnot);
@@ -1206,7 +1206,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                         // Action Annotation
                         if (actionBounds != null) {
                             if (pt.getActionAnnotation() == null) {
-                                ActionAnnotation actionAnnot = new ActionAnnotation(pt.getActionList(), ((PWSStateMachine)stateMachine).getAssembly(), newActions -> pt.setActionList(newActions));
+                                ActionAnnotation actionAnnot = new ActionAnnotation(pt.getActionList(), ((PWSStateMachine)stateMachine).getAssembly(), newActions -> pt.setActionList(newActions), pt);
                                 actionAnnot.setBounds(actionBounds);
                                 pt.setActionAnnotation(actionAnnot);
                                 add(actionAnnot);
