@@ -202,7 +202,26 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                     label.setVisible(true);
                     label.revalidate();
                     Dimension size = label.getPreferredSize();
-                    label.setBounds(defaultX, defaultY, size.width, size.height);
+
+                    // Snap initial placement: support half-grid snapping when enabled
+                    int placedX = defaultX;
+                    int placedY = defaultY;
+                    if (this.isSnapToGrid()) {
+                        int grid = this.getGridSize();
+                        if (grid > 0) {
+                            int w = size.width;
+                            int h = size.height;
+                            int centerX = defaultX + w / 2;
+                            int centerY = defaultY + h / 2;
+                            float half = grid / 2f;
+                            int snappedCenterX = Math.round(centerX / half) * Math.round(half);
+                            int snappedCenterY = Math.round(centerY / half) * Math.round(half);
+                            placedX = snappedCenterX - w / 2;
+                            placedY = snappedCenterY - h / 2;
+                        }
+                    }
+
+                    label.setBounds(placedX, placedY, size.width, size.height);
                     triggerLabels.put(t, label);
                 } else {
                     // Update text in case it changed.

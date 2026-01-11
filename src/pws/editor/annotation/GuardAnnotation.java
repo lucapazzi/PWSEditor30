@@ -43,8 +43,8 @@ public class GuardAnnotation extends Annotation<SMProposition> {
         addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent e) {
-                java.awt.Container parent = SwingUtilities.getAncestorOfClass(StateMachinePanel.class, GuardAnnotation.this);
-                if (parent instanceof StateMachinePanel panel && panel.isSnapToGrid()) {
+                java.awt.Container parent = javax.swing.SwingUtilities.getAncestorOfClass(editor.StateMachinePanel.class, GuardAnnotation.this);
+                if (parent instanceof editor.StateMachinePanel panel && panel.isSnapToGrid()) {
                     int grid = panel.getGridSize();
                     if (grid <= 0) return;
 

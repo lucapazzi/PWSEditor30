@@ -1159,6 +1159,9 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 Rectangle annotBounds = (pState.getAnnotation() != null) ? pState.getAnnotation().getBounds() : null;
                 oos.writeUTF(stateName);
                 oos.writeObject(annotBounds);
+                // persist whether the state dashboard was visible
+                boolean stateVisible = pState.isAnnotationVisible();
+                oos.writeBoolean(stateVisible);
             }
         }
         oos.writeUTF("END_STATES");
@@ -1175,6 +1178,13 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 oos.writeObject(guardBounds);
                 oos.writeObject(actionBounds);
                 oos.writeObject(semanticsBounds);
+                // persist visibility of the annotations (if present)
+                boolean guardVisible = (pt.getGuardAnnotation() != null) && pt.getGuardAnnotation().isVisible();
+                boolean actionVisible = (pt.getActionAnnotation() != null) && pt.getActionAnnotation().isVisible();
+                boolean semVisible = (pt.getSemanticsAnnotation() != null) && pt.getSemanticsAnnotation().isVisible();
+                oos.writeBoolean(guardVisible);
+                oos.writeBoolean(actionVisible);
+                oos.writeBoolean(semVisible);
             }
         }
     }
@@ -1184,6 +1194,13 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         String stateName = ois.readUTF();
         while (!"END_STATES".equals(stateName)) {
             Rectangle annotBounds = (Rectangle) ois.readObject();
+            boolean stateVisible = false;
+            try {
+                stateVisible = ois.readBoolean();
+            } catch (IOException ignored) {
+                // backward compatibility: if no boolean present, default to false
+                stateVisible = false;
+            }
             for (StateInterface s : stateMachine.getStates()) {
                 if (s instanceof PWSState && s.getName().equals(stateName)) {
                     PWSState pState = (PWSState) s;
@@ -1194,12 +1211,14 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                                 ((PWSStateMachine) stateMachine).getAssembly(),
                                 this);
                             annot.setBounds(annotBounds);
-                            annot.setVisible(false);
+                            annot.setVisible(stateVisible);
+                            pState.setAnnotationVisible(stateVisible);
                             pState.setAnnotation(annot);
                             add(annot);
                         } else {
                             pState.getAnnotation().setBounds(annotBounds);
-                            pState.getAnnotation().setVisible(false);
+                            pState.getAnnotation().setVisible(stateVisible);
+                            pState.setAnnotationVisible(stateVisible);
                         }
                     }
                     break;
@@ -1217,6 +1236,17 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 for (TransitionInterface t : stateMachine.getTransitions()) {
                     if (t instanceof PWSTransition && ((PWSTransition) t).getId().equals(transitionId)) {
                         PWSTransition pt = (PWSTransition) t;
+                        boolean guardVisible = false;
+                        boolean actionVisible = false;
+                        boolean semVisible = false;
+                        try {
+                            guardVisible = ois.readBoolean();
+                            actionVisible = ois.readBoolean();
+                            semVisible = ois.readBoolean();
+                        } catch (IOException ignored) {
+                            // backward compatibility: leave defaults false
+                        }
+
                         // Guard Annotation
                         if (guardBounds != null) {
                             if (pt.getGuardAnnotation() == null) {
@@ -1225,16 +1255,10 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                                 guardAnnot.setBounds(guardBounds);
                                 pt.setGuardAnnotation(guardAnnot);
                                 add(guardAnnot);
-                                // Hide TRUE guards when loading saved annotations
-                                if (pt.getGuardProposition() instanceof smalgebra.TrueProposition) {
-                                    guardAnnot.setVisible(false);
-                                }
+                                guardAnnot.setVisible(guardVisible);
                             } else {
                                 pt.getGuardAnnotation().setBounds(guardBounds);
-                                // Hide TRUE guards when loading saved annotations
-                                if (pt.getGuardProposition() instanceof smalgebra.TrueProposition) {
-                                    pt.getGuardAnnotation().setVisible(false);
-                                }
+                                pt.getGuardAnnotation().setVisible(guardVisible);
                             }
                         }
                         // Action Annotation
@@ -1244,16 +1268,10 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                                 actionAnnot.setBounds(actionBounds);
                                 pt.setActionAnnotation(actionAnnot);
                                 add(actionAnnot);
-                                // Hide empty action lists when loading saved annotations
-                                if (pt.getActionList().isEmpty()) {
-                                    actionAnnot.setVisible(false);
-                                }
+                                actionAnnot.setVisible(actionVisible);
                             } else {
                                 pt.getActionAnnotation().setBounds(actionBounds);
-                                // Hide empty action lists when loading saved annotations
-                                if (pt.getActionAnnotation().getContent().isEmpty()) {
-                                    pt.getActionAnnotation().setVisible(false);
-                                }
+                                pt.getActionAnnotation().setVisible(actionVisible);
                             }
                         }
                         // Transition Semantics Annotation
@@ -1262,12 +1280,12 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                                 Semantics semProp = pt.getTransitionSemantics();
                                 TransitionSemanticsAnnotation semAnnot = new TransitionSemanticsAnnotation(semProp);
                                 semAnnot.setBounds(semanticsBounds);
-                                semAnnot.setVisible(false);
+                                semAnnot.setVisible(semVisible);
                                 pt.setSemanticsAnnotation(semAnnot);
                                 add(semAnnot);
                             } else {
                                 pt.getSemanticsAnnotation().setBounds(semanticsBounds);
-                                pt.getSemanticsAnnotation().setVisible(false);
+                                pt.getSemanticsAnnotation().setVisible(semVisible);
                             }
                         }
                         break;
