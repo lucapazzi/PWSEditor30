@@ -38,6 +38,36 @@ public class GuardAnnotation extends Annotation<SMProposition> {
         this.associatedTransition = associatedTransition;
     }
 
+    // Add an extra listener to adjust snapping on mouse release to half-grid.
+    {
+        addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                java.awt.Container parent = SwingUtilities.getAncestorOfClass(StateMachinePanel.class, GuardAnnotation.this);
+                if (parent instanceof StateMachinePanel panel && panel.isSnapToGrid()) {
+                    int grid = panel.getGridSize();
+                    if (grid <= 0) return;
+
+                    int x = getX();
+                    int y = getY();
+                    int w = getWidth();
+                    int h = getHeight();
+                    int centerX = x + w / 2;
+                    int centerY = y + h / 2;
+
+                    float half = grid / 2f;
+                    int snappedCenterX = Math.round(centerX / half) * Math.round(half);
+                    int snappedCenterY = Math.round(centerY / half) * Math.round(half);
+
+                    int snappedX = snappedCenterX - w / 2;
+                    int snappedY = snappedCenterY - h / 2;
+                    setLocation(snappedX, snappedY);
+                    if (getParent() != null) getParent().repaint();
+                }
+            }
+        });
+    }
+
     @Override
     protected String buildDisplayText() {
         // Return the text with square brackets.

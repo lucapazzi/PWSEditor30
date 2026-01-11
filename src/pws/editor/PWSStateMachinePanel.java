@@ -58,14 +58,25 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     }
 
     /**
-     * Show or hide all state annotations in this panel.
-     * @param show true = display annotations; false = hide them
+     * Enable or disable rendering of state annotations/dashboards globally.
+     * This does NOT change individual state visibility - it only controls whether
+     * visible dashboards are rendered on the canvas.
+     * @param show true = render dashboards for states with annotationVisible=true; false = hide all
      */
     public void setShowStateAnnotations(boolean show) {
         this.showStateAnnotations = show;
+        repaint();
+    }
+
+    /**
+     * Force all state dashboards to be visible or hidden.
+     * This explicitly sets each state's annotationVisible property.
+     * @param visible true = make all dashboards visible; false = hide all
+     */
+    public void setAllStateDashboardsVisible(boolean visible) {
         for (StateInterface si : stateMachine.getStates()) {
             if (si instanceof PWSState p) {
-                p.setAnnotationVisible(show);
+                p.setAnnotationVisible(visible);
             }
         }
         repaint();
@@ -79,8 +90,12 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     /**
      * Recreate and attach dashboards for states that were marked visible but
      * whose transient annotation component was not restored (e.g., after load).
+     *
+     * Made public so callers (e.g. the outer editor) can force a restore after
+     * annotations are loaded from disk or after the global "show dashboards"
+     * flag is toggled.
      */
-    private void restoreVisibleStateAnnotations() {
+    public void restoreVisibleStateAnnotations() {
         Assembly assembly = ((PWSStateMachine) stateMachine).getAssembly();
         for (StateInterface si : stateMachine.getStates()) {
             if (si instanceof PWSState pwsState) {
@@ -102,9 +117,13 @@ public class PWSStateMachinePanel extends StateMachinePanel {
 
                     pwsState.setAnnotation(annot);
                     add(annot);
-                } else if (annot.getParent() != this) {
-                    // If the annotation exists but isn't attached to this panel, attach it.
-                    add(annot);
+                } else {
+                    // Annotation exists - ensure it's attached and visible
+                    if (annot.getParent() != this) {
+                        add(annot);
+                    }
+                    // Ensure the JComponent is visible (loadAnnotationsFromStream sets it to false)
+                    annot.setVisible(true);
                 }
             }
         }
@@ -435,6 +454,21 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             // Center the annotation on the grid point by subtracting half the width/height
             int guardX = guardPoint.x - 60; // center horizontal (120 / 2 = 60)
             int guardY = guardPoint.y - 10; // center vertical (20 / 2 = 10)
+            // Snap guard annotation center to half-grid if snapping is enabled
+            java.awt.Container parent = SwingUtilities.getAncestorOfClass(editor.StateMachinePanel.class, this);
+            if (parent instanceof editor.StateMachinePanel panel && panel.isSnapToGrid()) {
+                int grid = panel.getGridSize();
+                if (grid > 0) {
+                    int w = 120, h = 20;
+                    int centerX = guardX + w / 2;
+                    int centerY = guardY + h / 2;
+                    float half = grid / 2f;
+                    int snappedCenterX = Math.round(centerX / half) * Math.round(half);
+                    int snappedCenterY = Math.round(centerY / half) * Math.round(half);
+                    guardX = snappedCenterX - w / 2;
+                    guardY = snappedCenterY - h / 2;
+                }
+            }
             GuardAnnotation guardAnnot = new GuardAnnotation(guardProp, assembly, newGuard -> {
                 pt.setGuardProposition(newGuard);
             }, pt);

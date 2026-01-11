@@ -598,6 +598,8 @@ public class PWSEditor extends JFrame {
                         try {
                             PWSStateMachinePanel panel = (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
                             panel.setShowStateAnnotations(true);
+                            // Reattach and show any annotations that were restored from the file
+                            panel.restoreVisibleStateAnnotations();
                             panel.repaint();
                         } catch (Exception ex) {
                             // ignore
@@ -789,10 +791,12 @@ public class PWSEditor extends JFrame {
         });
         viewMenu.add(showStateAnn);
 
-        // Ensure dashboards are visible at startup
+        // Ensure dashboards are visible at startup (preserve per-state visibility)
         try {
             PWSStateMachinePanel panel = (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
             panel.setShowStateAnnotations(true);
+            // Ensure any saved annotation components are restored and shown where appropriate
+            panel.restoreVisibleStateAnnotations();
             panel.repaint();
         } catch (Exception ex) {
             // Ignore if panel is not yet ready
