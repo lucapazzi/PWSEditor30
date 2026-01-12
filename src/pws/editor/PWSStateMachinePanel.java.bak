@@ -58,25 +58,14 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     }
 
     /**
-     * Enable or disable rendering of state annotations/dashboards globally.
-     * This does NOT change individual state visibility - it only controls whether
-     * visible dashboards are rendered on the canvas.
-     * @param show true = render dashboards for states with annotationVisible=true; false = hide all
+     * Show or hide all state annotations in this panel.
+     * @param show true = display annotations; false = hide them
      */
     public void setShowStateAnnotations(boolean show) {
         this.showStateAnnotations = show;
-        repaint();
-    }
-
-    /**
-     * Force all state dashboards to be visible or hidden.
-     * This explicitly sets each state's annotationVisible property.
-     * @param visible true = make all dashboards visible; false = hide all
-     */
-    public void setAllStateDashboardsVisible(boolean visible) {
         for (StateInterface si : stateMachine.getStates()) {
             if (si instanceof PWSState p) {
-                p.setAnnotationVisible(visible);
+                p.setAnnotationVisible(show);
             }
         }
         repaint();
@@ -90,12 +79,8 @@ public class PWSStateMachinePanel extends StateMachinePanel {
     /**
      * Recreate and attach dashboards for states that were marked visible but
      * whose transient annotation component was not restored (e.g., after load).
-     *
-     * Made public so callers (e.g. the outer editor) can force a restore after
-     * annotations are loaded from disk or after the global "show dashboards"
-     * flag is toggled.
      */
-    public void restoreVisibleStateAnnotations() {
+    private void restoreVisibleStateAnnotations() {
         Assembly assembly = ((PWSStateMachine) stateMachine).getAssembly();
         for (StateInterface si : stateMachine.getStates()) {
             if (si instanceof PWSState pwsState) {
@@ -117,13 +102,9 @@ public class PWSStateMachinePanel extends StateMachinePanel {
 
                     pwsState.setAnnotation(annot);
                     add(annot);
-                } else {
-                    // Annotation exists - ensure it's attached and visible
-                    if (annot.getParent() != this) {
-                        add(annot);
-                    }
-                    // Ensure the JComponent is visible (loadAnnotationsFromStream sets it to false)
-                    annot.setVisible(true);
+                } else if (annot.getParent() != this) {
+                    // If the annotation exists but isn't attached to this panel, attach it.
+                    add(annot);
                 }
             }
         }
@@ -277,15 +258,13 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             drawPWSTransitionAnnotations(g2d, pt, p0, cp, p2);
         }
 
-        // Draw control handle only when edit mode is enabled
-        if (isEditMode()) {
+        if (showControlHandles) {
             drawControlHandle(g2d, cp);
-        }
-        
-        // For self-loops, draw endpoint handles if enabled
-        if (showControlHandles && isSelfLoop) {
-            drawSelfLoopEndpointHandle(g2d, p0);  // start point
-            drawSelfLoopEndpointHandle(g2d, p2);  // end point
+            // For self-loops, also draw handles on start and end points
+            if (isSelfLoop) {
+                drawSelfLoopEndpointHandle(g2d, p0);  // start point
+                drawSelfLoopEndpointHandle(g2d, p2);  // end point
+            }
         }
 
         // Disegna le linee di collegamento tra le annotazioni e l'arco,
@@ -454,24 +433,9 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             // Center the annotation on the grid point by subtracting half the width/height
             int guardX = guardPoint.x - 60; // center horizontal (120 / 2 = 60)
             int guardY = guardPoint.y - 10; // center vertical (20 / 2 = 10)
-            // Snap guard annotation center to half-grid if snapping is enabled
-            java.awt.Container parent = SwingUtilities.getAncestorOfClass(editor.StateMachinePanel.class, this);
-            if (parent instanceof editor.StateMachinePanel panel && panel.isSnapToGrid()) {
-                int grid = panel.getGridSize();
-                if (grid > 0) {
-                    int w = 120, h = 20;
-                    int centerX = guardX + w / 2;
-                    int centerY = guardY + h / 2;
-                    float half = grid / 2f;
-                    int snappedCenterX = Math.round(centerX / half) * Math.round(half);
-                    int snappedCenterY = Math.round(centerY / half) * Math.round(half);
-                    guardX = snappedCenterX - w / 2;
-                    guardY = snappedCenterY - h / 2;
-                }
-            }
             GuardAnnotation guardAnnot = new GuardAnnotation(guardProp, assembly, newGuard -> {
                 pt.setGuardProposition(newGuard);
-            }, pt);
+            });
             guardAnnot.setBounds(guardX, guardY, 120, 20);
             // For both reactive and triggerable transitions, pass guardProp directly.
             guardAnnot.setContent(guardProp);
@@ -490,7 +454,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
             int actionY = actionPoint.y - 10; // center vertical (20 / 2 = 10)
             ActionAnnotation actionAnnot = new ActionAnnotation(actions, assembly, newActions -> {
                 pt.setActionList(newActions);
-            }, pt);
+            });
             actionAnnot.setBounds(actionX, actionY, 150, 20);
             pt.setActionAnnotation(actionAnnot);
             add(actionAnnot);
@@ -901,7 +865,7 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         popup.addSeparator();
         
         // Voce per mostrare/nascondere i control handles
-        JMenuItem toggleHandlesItem = new JMenuItem(showControlHandles ? "Hide Self-Loop Handles" : "Show Self-Loop Handles");
+        JMenuItem toggleHandlesItem = new JMenuItem(showControlHandles ? "Hide Control Handles" : "Show Control Handles");
         toggleHandlesItem.addActionListener(ae -> {
             showControlHandles = !showControlHandles;
             repaint();
@@ -1159,9 +1123,6 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 Rectangle annotBounds = (pState.getAnnotation() != null) ? pState.getAnnotation().getBounds() : null;
                 oos.writeUTF(stateName);
                 oos.writeObject(annotBounds);
-                // persist whether the state dashboard was visible
-                boolean stateVisible = pState.isAnnotationVisible();
-                oos.writeBoolean(stateVisible);
             }
         }
         oos.writeUTF("END_STATES");
@@ -1178,13 +1139,6 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 oos.writeObject(guardBounds);
                 oos.writeObject(actionBounds);
                 oos.writeObject(semanticsBounds);
-                // persist visibility of the annotations (if present)
-                boolean guardVisible = (pt.getGuardAnnotation() != null) && pt.getGuardAnnotation().isVisible();
-                boolean actionVisible = (pt.getActionAnnotation() != null) && pt.getActionAnnotation().isVisible();
-                boolean semVisible = (pt.getSemanticsAnnotation() != null) && pt.getSemanticsAnnotation().isVisible();
-                oos.writeBoolean(guardVisible);
-                oos.writeBoolean(actionVisible);
-                oos.writeBoolean(semVisible);
             }
         }
     }
@@ -1194,13 +1148,6 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         String stateName = ois.readUTF();
         while (!"END_STATES".equals(stateName)) {
             Rectangle annotBounds = (Rectangle) ois.readObject();
-            boolean stateVisible = false;
-            try {
-                stateVisible = ois.readBoolean();
-            } catch (IOException ignored) {
-                // backward compatibility: if no boolean present, default to false
-                stateVisible = false;
-            }
             for (StateInterface s : stateMachine.getStates()) {
                 if (s instanceof PWSState && s.getName().equals(stateName)) {
                     PWSState pState = (PWSState) s;
@@ -1211,14 +1158,12 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                                 ((PWSStateMachine) stateMachine).getAssembly(),
                                 this);
                             annot.setBounds(annotBounds);
-                            annot.setVisible(stateVisible);
-                            pState.setAnnotationVisible(stateVisible);
+                            annot.setVisible(false);
                             pState.setAnnotation(annot);
                             add(annot);
                         } else {
                             pState.getAnnotation().setBounds(annotBounds);
-                            pState.getAnnotation().setVisible(stateVisible);
-                            pState.setAnnotationVisible(stateVisible);
+                            pState.getAnnotation().setVisible(false);
                         }
                     }
                     break;
@@ -1236,42 +1181,43 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                 for (TransitionInterface t : stateMachine.getTransitions()) {
                     if (t instanceof PWSTransition && ((PWSTransition) t).getId().equals(transitionId)) {
                         PWSTransition pt = (PWSTransition) t;
-                        boolean guardVisible = false;
-                        boolean actionVisible = false;
-                        boolean semVisible = false;
-                        try {
-                            guardVisible = ois.readBoolean();
-                            actionVisible = ois.readBoolean();
-                            semVisible = ois.readBoolean();
-                        } catch (IOException ignored) {
-                            // backward compatibility: leave defaults false
-                        }
-
                         // Guard Annotation
                         if (guardBounds != null) {
                             if (pt.getGuardAnnotation() == null) {
                                 SMProposition guardProp = pt.getGuardProposition();
-                                GuardAnnotation guardAnnot = new GuardAnnotation(guardProp, ((PWSStateMachine)stateMachine).getAssembly(), newGuard -> pt.setGuardProposition(newGuard), pt);
+                                GuardAnnotation guardAnnot = new GuardAnnotation(guardProp, ((PWSStateMachine)stateMachine).getAssembly(), newGuard -> pt.setGuardProposition(newGuard));
                                 guardAnnot.setBounds(guardBounds);
                                 pt.setGuardAnnotation(guardAnnot);
                                 add(guardAnnot);
-                                guardAnnot.setVisible(guardVisible);
+                                // Hide TRUE guards when loading saved annotations
+                                if (pt.getGuardProposition() instanceof smalgebra.TrueProposition) {
+                                    guardAnnot.setVisible(false);
+                                }
                             } else {
                                 pt.getGuardAnnotation().setBounds(guardBounds);
-                                pt.getGuardAnnotation().setVisible(guardVisible);
+                                // Hide TRUE guards when loading saved annotations
+                                if (pt.getGuardProposition() instanceof smalgebra.TrueProposition) {
+                                    pt.getGuardAnnotation().setVisible(false);
+                                }
                             }
                         }
                         // Action Annotation
                         if (actionBounds != null) {
                             if (pt.getActionAnnotation() == null) {
-                                ActionAnnotation actionAnnot = new ActionAnnotation(pt.getActionList(), ((PWSStateMachine)stateMachine).getAssembly(), newActions -> pt.setActionList(newActions), pt);
+                                ActionAnnotation actionAnnot = new ActionAnnotation(pt.getActionList(), ((PWSStateMachine)stateMachine).getAssembly(), newActions -> pt.setActionList(newActions));
                                 actionAnnot.setBounds(actionBounds);
                                 pt.setActionAnnotation(actionAnnot);
                                 add(actionAnnot);
-                                actionAnnot.setVisible(actionVisible);
+                                // Hide empty action lists when loading saved annotations
+                                if (pt.getActionList().isEmpty()) {
+                                    actionAnnot.setVisible(false);
+                                }
                             } else {
                                 pt.getActionAnnotation().setBounds(actionBounds);
-                                pt.getActionAnnotation().setVisible(actionVisible);
+                                // Hide empty action lists when loading saved annotations
+                                if (pt.getActionAnnotation().getContent().isEmpty()) {
+                                    pt.getActionAnnotation().setVisible(false);
+                                }
                             }
                         }
                         // Transition Semantics Annotation
@@ -1280,12 +1226,12 @@ public class PWSStateMachinePanel extends StateMachinePanel {
                                 Semantics semProp = pt.getTransitionSemantics();
                                 TransitionSemanticsAnnotation semAnnot = new TransitionSemanticsAnnotation(semProp);
                                 semAnnot.setBounds(semanticsBounds);
-                                semAnnot.setVisible(semVisible);
+                                semAnnot.setVisible(false);
                                 pt.setSemanticsAnnotation(semAnnot);
                                 add(semAnnot);
                             } else {
                                 pt.getSemanticsAnnotation().setBounds(semanticsBounds);
-                                pt.getSemanticsAnnotation().setVisible(semVisible);
+                                pt.getSemanticsAnnotation().setVisible(false);
                             }
                         }
                         break;
@@ -1330,16 +1276,5 @@ public class PWSStateMachinePanel extends StateMachinePanel {
         updateTriggerLabels();
         revalidate();
         repaint();
-    }
-    
-    /**
-     * Draws a draggable endpoint handle for self-loops.
-     */
-    private void drawSelfLoopEndpointHandle(Graphics2D g2d, Point p) {
-        g2d.setColor(Color.BLUE);
-        int handleRadius = 4;
-        g2d.fillOval(p.x - handleRadius, p.y - handleRadius, handleRadius * 2, handleRadius * 2);
-        g2d.setColor(Color.BLACK);
-        g2d.drawOval(p.x - handleRadius, p.y - handleRadius, handleRadius * 2, handleRadius * 2);
     }
 }

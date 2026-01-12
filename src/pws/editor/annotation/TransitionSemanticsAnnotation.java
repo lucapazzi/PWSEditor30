@@ -22,7 +22,7 @@ public class TransitionSemanticsAnnotation extends Annotation<Semantics> {
     protected void showPopup(MouseEvent e) {
         // Create a popup with a single disabled menu item.
         JPopupMenu popup = new JPopupMenu();
-        JMenuItem notModifiable = new JMenuItem("Annotazione non modificabile");
+        JMenuItem notModifiable = new JMenuItem("Annotation not editable");
         notModifiable.setEnabled(false);
         popup.add(notModifiable);
         popup.show(this, e.getX(), e.getY());

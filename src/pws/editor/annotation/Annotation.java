@@ -33,17 +33,34 @@ public class Annotation<T> extends JComponent implements Serializable {
                     showPopup(e);
                 }
 
-                // Snap annotation to grid if parent panel supports it
+                // Snap annotation to half-grid if parent panel supports it
+                // The center of the annotation is snapped to half-grid increments
                 java.awt.Container parent = SwingUtilities.getAncestorOfClass(StateMachinePanel.class, Annotation.this);
                 if (parent instanceof StateMachinePanel panel && panel.isSnapToGrid()) {
                     int grid = panel.getGridSize();
-                    int x = getX();
-                    int y = getY();
-                    int snappedX = Math.round(x / (float) grid) * grid;
-                    int snappedY = Math.round(y / (float) grid) * grid;
-                    setLocation(snappedX, snappedY);
-                    if (getParent() != null) {
-                        getParent().repaint();
+                    if (grid > 0) {
+                        int x = getX();
+                        int y = getY();
+                        int width = getWidth();
+                        int height = getHeight();
+
+                        // Calculate center position
+                        int centerX = x + width / 2;
+                        int centerY = y + height / 2;
+
+                        // Snap center to half-grid (grid/2) increments
+                        int half = Math.max(1, grid / 2);
+                        int snappedCenterX = Math.round((float) centerX / half) * half;
+                        int snappedCenterY = Math.round((float) centerY / half) * half;
+
+                        // Calculate new top-left position from snapped center
+                        int snappedX = snappedCenterX - width / 2;
+                        int snappedY = snappedCenterY - height / 2;
+
+                        setLocation(snappedX, snappedY);
+                        if (getParent() != null) {
+                            getParent().repaint();
+                        }
                     }
                 }
 

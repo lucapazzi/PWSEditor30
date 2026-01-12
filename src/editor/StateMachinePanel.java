@@ -29,8 +29,11 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
     protected TransitionInterface selectedTransitionForControl = null;
     protected Point controlDragOffset = null;
 
-    // Flag to show control handles
+    // Flag to show control handles (for self-loop endpoints in PWS)
     protected boolean showControlHandles = true;
+
+    // Flag to enable/disable edit mode (controls green control point visibility)
+    protected boolean editMode = true;
 
     // Grid and snapping
     protected boolean showGrid = true;
@@ -112,6 +115,15 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         repaint();
     }
 
+    public boolean isEditMode() {
+        return editMode;
+    }
+
+    public void setEditMode(boolean editMode) {
+        this.editMode = editMode;
+        repaint();
+    }
+
     public void enableLinkMode() {
         linkMode = true;
         transitionSourceState = null;
@@ -190,7 +202,26 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                     label.setVisible(true);
                     label.revalidate();
                     Dimension size = label.getPreferredSize();
-                    label.setBounds(defaultX, defaultY, size.width, size.height);
+
+                    // Snap initial placement: support half-grid snapping when enabled
+                    int placedX = defaultX;
+                    int placedY = defaultY;
+                    if (this.isSnapToGrid()) {
+                        int grid = this.getGridSize();
+                        if (grid > 0) {
+                            int w = size.width;
+                            int h = size.height;
+                            int centerX = defaultX + w / 2;
+                            int centerY = defaultY + h / 2;
+                            float half = grid / 2f;
+                            int snappedCenterX = Math.round(centerX / half) * Math.round(half);
+                            int snappedCenterY = Math.round(centerY / half) * Math.round(half);
+                            placedX = snappedCenterX - w / 2;
+                            placedY = snappedCenterY - h / 2;
+                        }
+                    }
+
+                    label.setBounds(placedX, placedY, size.width, size.height);
                     triggerLabels.put(t, label);
                 } else {
                     // Update text in case it changed.
@@ -288,8 +319,8 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             g2d.drawOval(p0.x - circleRadius, p0.y - circleRadius, circleRadius * 2, circleRadius * 2);
         }
 
-        // Draw control handles if enabled.
-        if (showControlHandles) {
+        // Draw control handle only if edit mode is enabled
+        if (editMode) {
             drawControlHandle(g2d, cp);
         }
     }
@@ -306,6 +337,8 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         int controlY = (int) (midY + offset * (dx / distance));
         return new Point(controlX, controlY);
     }
+    
+
 
     private Point computeStartPoint(Point centerSource, Point cp, int offset) {
         double d0x = cp.x - centerSource.x;
@@ -534,7 +567,22 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
 
     }
 
-    @Override public void mouseClicked(MouseEvent e) { }
+    @Override public void mouseClicked(MouseEvent e) { 
+        // Left-button double-click to rename a state
+        if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2) {
+            StateInterface state = getStateAt(e.getPoint());
+            if (state == null) return;
+            // Do not rename the pseudostate
+            if (state.getName().equals("PseudoState")) {
+                return;
+            }
+            String newName = JOptionPane.showInputDialog(this, "Rename state:", state.getName());
+            if (newName != null && !newName.trim().isEmpty()) {
+                ((State) state).setName(newName.trim());
+                repaint();
+            }
+        }
+    }
     @Override public void mouseEntered(MouseEvent e) { }
     @Override public void mouseExited(MouseEvent e) { }
     @Override public void mouseMoved(MouseEvent e) { }
@@ -573,6 +621,13 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                 System.out.println("Link mode: Source state selected: " + transitionSourceState.getName());
             } else {
                 if (clickedState != transitionSourceState) {
+                    // Prevent pseudostate as target
+                    if (clickedState.getName().equals("PseudoState")) {
+                        JOptionPane.showMessageDialog(this, "Cannot create transition to PseudoState.");
+                        linkMode = false;
+                        transitionSourceState = null;
+                        return;
+                    }
                     String trigger = JOptionPane.showInputDialog(this, "Enter trigger event (leave blank for autonomous):");
                     boolean autonomous = transitionSourceState.getName().equals("PseudoState") ||
                             (trigger == null || trigger.trim().isEmpty());
@@ -604,7 +659,51 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
         StateInterface state = getStateAt(p);
         if (state != null) {
             showPopupMenuForState(e, state);
+        } else {
+            showEmptySpacePopup(e);
         }
+    }
+
+    private void showEmptySpacePopup(MouseEvent e) {
+        JPopupMenu popup = new JPopupMenu();
+        JMenuItem addStateItem = new JMenuItem("Add State");
+        addStateItem.addActionListener(ae -> {
+            addNewStateAt(e.getPoint());
+        });
+        popup.add(addStateItem);
+        popup.show(this, e.getX(), e.getY());
+    }
+
+    private void addNewStateAt(Point clickPoint) {
+        String name = generateDefaultStateName(stateMachine);
+        int diameter = DIAMETER;
+        int radius = diameter / 2;
+        int centerX = clickPoint.x;
+        int centerY = clickPoint.y;
+        if (snapToGrid) {
+            Point snapped = snap(new Point(centerX, centerY));
+            centerX = snapped.x;
+            centerY = snapped.y;
+        }
+        Point topLeft = new Point(centerX - radius, centerY - radius);
+        stateMachine.addState(new State(name, topLeft));
+        repaint();
+    }
+
+    private String generateDefaultStateName(StateMachine machine) {
+        java.util.Set<String> names = new java.util.HashSet<>();
+        for (StateInterface si : machine.getStates()) {
+            names.add(si.getName());
+        }
+        String base = "S";
+        if (!names.contains(base)) {
+            return base;
+        }
+        int idx = 1;
+        while (names.contains(base + idx)) {
+            idx++;
+        }
+        return base + idx;
     }
 
     private void showTransitionPopup(MouseEvent e, TransitionInterface t) {
@@ -619,6 +718,8 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
             repaint();
         });
         popup.add(deleteItem);
+        
+        popup.addSeparator();
 
         // Se necessario, qui puoi aggiungere ulteriori voci per gestire annotazioni (guard, action, semantics),
         // per esempio "Toggle Guard Annotation", "Toggle Action Annotation", ecc.
@@ -630,16 +731,27 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
     private void showPopupMenuForState(MouseEvent e, StateInterface state) {
         System.out.println("showPopupMenuForState invoked for state: " + state.getName());
         JPopupMenu popup = new JPopupMenu();
-        JMenuItem editItem = new JMenuItem("Modify");
-        editItem.addActionListener(ae -> {
-            String newName = JOptionPane.showInputDialog(this, "New name for state:", state.getName());
-            if (newName != null && !newName.trim().isEmpty()) {
-                ((State) state).setName(newName);
-                repaint();
-            }
-        });
-        popup.add(editItem);
-        if (!state.getName().equals("PseudoState")) {
+
+        if (state.getName().equals("PseudoState")) {
+            // Pseudo-state menu
+            JMenuItem addInitialTransItem = new JMenuItem("Add initial transition");
+            addInitialTransItem.addActionListener(ae -> {
+                enableInitialTransitionMode();
+            });
+            popup.add(addInitialTransItem);
+
+            JMenuItem infoItem = new JMenuItem("Pseudostate not deletable");
+            infoItem.setEnabled(false);
+            popup.add(infoItem);
+        } else {
+            // Normal state menu
+            // Create transition item - only if state is not the pseudostate
+            JMenuItem createTransItem = new JMenuItem("Create transition from this state");
+            createTransItem.addActionListener(ae -> {
+                enableLinkModeWithSource(state);
+            });
+            popup.add(createTransItem);
+
             JMenuItem deleteItem = new JMenuItem("Delete");
             deleteItem.addActionListener(ae -> {
                 System.out.println("Delete menu item clicked for state: " + state.getName());
@@ -658,13 +770,17 @@ public class StateMachinePanel extends JPanel implements MouseListener, MouseMot
                 }
             });
             popup.add(deleteItem);
-        } else {
-            JMenuItem infoItem = new JMenuItem("Pseudostate not deletable");
-            infoItem.setEnabled(false);
-            popup.add(infoItem);
         }
         System.out.println("Showing popup menu for state: " + state.getName());
         popup.show(this, e.getX(), e.getY());
+    }
+
+    /**
+     * Enable link mode with a predefined source state.
+     */
+    public void enableLinkModeWithSource(StateInterface sourceState) {
+        linkMode = true;
+        transitionSourceState = sourceState;
     }
 
     /**

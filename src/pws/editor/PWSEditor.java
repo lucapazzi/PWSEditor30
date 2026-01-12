@@ -67,7 +67,8 @@ public class PWSEditor extends JFrame {
         }
     }
     private void initComponents() {
-        setJMenuBar(createMenuBar());
+        // Don't set the menu bar at the frame level anymore
+        // setJMenuBar(createMenuBar());
 
         // Left editor area (wrapped with a header)
         baseEditor = new PWSStateMachineEditor(pwsStateMachine, "PWSMachine");
@@ -75,10 +76,19 @@ public class PWSEditor extends JFrame {
         editorInner.add(baseEditor.getContentPane(), BorderLayout.CENTER);
 
         JPanel leftWrapper = new JPanel(new BorderLayout());
+        
+        // Top section: header + menu bar
+        JPanel leftTopSection = new JPanel(new BorderLayout());
         JLabel leftHeader = new JLabel("Controller", SwingConstants.CENTER);
         leftHeader.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         leftHeader.setFont(leftHeader.getFont().deriveFont(Font.BOLD));
-        leftWrapper.add(leftHeader, BorderLayout.NORTH);
+        leftTopSection.add(leftHeader, BorderLayout.NORTH);
+        
+        // Add menu bar below the header
+        JMenuBar controllerMenuBar = createMenuBar();
+        leftTopSection.add(controllerMenuBar, BorderLayout.SOUTH);
+        
+        leftWrapper.add(leftTopSection, BorderLayout.NORTH);
         leftWrapper.add(editorInner, BorderLayout.CENTER);
 
         // Ensure clicks anywhere on the left editor area transfer focus to the controller's panel
@@ -107,6 +117,7 @@ public class PWSEditor extends JFrame {
             }
         };
         // Install listener on header and the editor wrapper so clicks reach the state panel
+        leftTopSection.addMouseListener(focusRequester);
         leftHeader.addMouseListener(focusRequester);
         editorInner.addMouseListener(focusRequester);
         leftWrapper.addMouseListener(focusRequester);
@@ -587,6 +598,8 @@ public class PWSEditor extends JFrame {
                         try {
                             PWSStateMachinePanel panel = (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
                             panel.setShowStateAnnotations(true);
+                            // Reattach and show any annotations that were restored from the file
+                            panel.restoreVisibleStateAnnotations();
                             panel.repaint();
                         } catch (Exception ex) {
                             // ignore
@@ -675,6 +688,13 @@ public class PWSEditor extends JFrame {
         // SVG export removed — prefer PDF export
 
         // New: Export as PDF menu item.
+        // PDF export preference (vector vs raster)
+        JCheckBoxMenuItem preferVectorItem = new JCheckBoxMenuItem("Prefer vector PDF export", false);
+        preferVectorItem.addActionListener(e -> {
+            utility.PDFExporter.setPreferVector(preferVectorItem.isSelected());
+        });
+        fileMenu.add(preferVectorItem);
+
         JMenuItem exportPDFItem = new JMenuItem("Export as PDF");
         exportPDFItem.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
@@ -696,6 +716,12 @@ public class PWSEditor extends JFrame {
                     utility.PDFExporter.exportPanelToPDF(panel, file);
                     JOptionPane.showMessageDialog(PWSEditor.this,
                             "PDF file saved successfully.");
+                } catch (UnsupportedOperationException uoe) {
+                    // PDF export not implemented due to missing dependency (e.g., PDFBox)
+                    uoe.printStackTrace();
+                    JOptionPane.showMessageDialog(PWSEditor.this,
+                            "PDF export is not available: " + uoe.getMessage(),
+                            "Not Available", JOptionPane.WARNING_MESSAGE);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                     JOptionPane.showMessageDialog(PWSEditor.this,
@@ -717,53 +743,17 @@ public class PWSEditor extends JFrame {
         // --- Edit Menu (existing items) ---
         JMenu editMenu = new JMenu("Edit");
 
-        JMenuItem addStateItem = new JMenuItem("Add State");
-        addStateItem.addActionListener(e -> {
-            String name = JOptionPane.showInputDialog(PWSEditor.this, "Enter state name:");
-            if (name != null && !name.trim().isEmpty()) {
-                // create state at a default top-left, then align its CENTER to the grid if enabled
-                Point defaultTopLeft = new Point(50, 50);
-                PWSState newState = new PWSState(name, defaultTopLeft, pwsStateMachine.getAssembly());
-                pwsStateMachine.addState(newState);
-
-                // Try to align center to grid using the active panel's grid settings
-                try {
-                    PWSStateMachinePanel panel = (PWSStateMachinePanel) ((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
-                    if (panel.isSnapToGrid()) {
-                        int grid = panel.getGridSize();
-                        int diameter = 50; // must match StateMachinePanel.DIAMETER
-                        int radius = diameter / 2;
-                        Point center = new Point(defaultTopLeft.x + radius, defaultTopLeft.y + radius);
-                        int snappedCenterX = Math.round(center.x / (float) grid) * grid;
-                        int snappedCenterY = Math.round(center.y / (float) grid) * grid;
-                        Point newTopLeft = new Point(snappedCenterX - radius, snappedCenterY - radius);
-                        newState.setPosition(newTopLeft);
-                    }
-                } catch (ClassCastException ex) {
-                    // If casting fails, ignore snapping and leave default position.
-                }
-
-                baseEditor.getStateMachinePanel().repaint();
-            }
-        });
-        editMenu.add(addStateItem);
-
-        JMenuItem addInitialTransitionItem = new JMenuItem("Add initial transition");
-        addInitialTransitionItem.addActionListener(e ->
-                baseEditor.getStateMachinePanel().enableInitialTransitionMode());
-        editMenu.add(addInitialTransitionItem);
-
         editMenu.addSeparator();
 
-//        JMenuItem addTransitionItem = new JMenuItem("Aggiungi Transizione");
+//        JMenuItem addTransitionItem = new JMenuItem("Add Transition");
 //        addTransitionItem.addActionListener(e -> {
-//            String sourceName = JOptionPane.showInputDialog(PWSEditor.this, "Inserisci il nome dello stato sorgente:");
-//            String targetName = JOptionPane.showInputDialog(PWSEditor.this, "Inserisci il nome dello stato target:");
+//            String sourceName = JOptionPane.showInputDialog(PWSEditor.this, "Enter the source state name:");
+//            String targetName = JOptionPane.showInputDialog(PWSEditor.this, "Enter the target state name:");
 //            if (sourceName != null && targetName != null) {
 //                machinery.StateInterface source = findStateByName(sourceName);
 //                machinery.StateInterface target = findStateByName(targetName);
 //                if (source != null && target != null) {
-//                    String trigger = JOptionPane.showInputDialog(PWSEditor.this, "Inserisci il trigger event (lascia vuoto per interna):");
+//                    String trigger = JOptionPane.showInputDialog(PWSEditor.this, "Enter trigger event (leave blank for internal):");
 //                    boolean autonomous = (trigger == null || trigger.trim().isEmpty());
 //                    pws.PWSTransition newTransition = new pws.PWSTransition(source, target, autonomous, trigger);
 //                    GuardActionsPair gap = ((Assembly) pwsStateMachine.getAssembly()).askForGuardAndActions();
@@ -782,12 +772,8 @@ public class PWSEditor extends JFrame {
 //        });
 //        editMenu.add(addTransitionItem);
 
-        JMenuItem linkModeItem = new JMenuItem("Create transition (link mode)");
-        linkModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().enableLinkMode());
-        editMenu.add(linkModeItem);
-
         JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Edit mode", true);
-        editModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().setShowControlHandles(editModeItem.isSelected()));
+        editModeItem.addActionListener(e -> baseEditor.getStateMachinePanel().setEditMode(editModeItem.isSelected()));
         editMenu.add(editModeItem);
 
         menuBar.add(editMenu);
@@ -805,10 +791,12 @@ public class PWSEditor extends JFrame {
         });
         viewMenu.add(showStateAnn);
 
-        // Ensure dashboards are visible at startup
+        // Ensure dashboards are visible at startup (preserve per-state visibility)
         try {
             PWSStateMachinePanel panel = (PWSStateMachinePanel)((PWSStateMachineEditor) baseEditor).getStateMachinePanel();
             panel.setShowStateAnnotations(true);
+            // Ensure any saved annotation components are restored and shown where appropriate
+            panel.restoreVisibleStateAnnotations();
             panel.repaint();
         } catch (Exception ex) {
             // Ignore if panel is not yet ready
@@ -872,6 +860,7 @@ public class PWSEditor extends JFrame {
         }
         return null;
     }
+
 
     public static void main(String[] args) {
         // Simplify logs: only show the message text

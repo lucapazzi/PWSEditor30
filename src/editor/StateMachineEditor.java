@@ -162,22 +162,6 @@ public class StateMachineEditor extends JFrame {
         // Edit Menu
         JMenu editMenu = new JMenu("Edit");
 
-// 1. Add State
-        JMenuItem addStateItem = new JMenuItem("Add State");
-        addStateItem.addActionListener(e -> {
-            String name = JOptionPane.showInputDialog(this, "Enter state name:");
-            if (name != null && !name.trim().isEmpty()) {
-                stateMachine.addState(new State(name, new Point(50, 50)));
-                statePanel.repaint();
-            }
-        });
-        editMenu.add(addStateItem);
-
-// 2. Add initial transition
-        JMenuItem addInitialTransitionItem = new JMenuItem("Add initial transition");
-        addInitialTransitionItem.addActionListener(e -> statePanel.enableInitialTransitionMode());
-        editMenu.add(addInitialTransitionItem);
-
         editMenu.addSeparator();
 
 // 3. Add transition
@@ -201,14 +185,9 @@ public class StateMachineEditor extends JFrame {
 //        });
 //        editMenu.add(addTransitionItem);
 
-// 4. Create transition (link mode)
-        JMenuItem linkModeItem = new JMenuItem("Create transition (link mode)");
-        linkModeItem.addActionListener(e -> statePanel.enableLinkMode());
-        editMenu.add(linkModeItem);
-
-// 5. Edit mode (checkbox)
+// 4. Edit mode (checkbox)
         JCheckBoxMenuItem editModeItem = new JCheckBoxMenuItem("Edit mode", true);
-        editModeItem.addActionListener(e -> statePanel.setShowControlHandles(editModeItem.isSelected()));
+        editModeItem.addActionListener(e -> statePanel.setEditMode(editModeItem.isSelected()));
         editMenu.add(editModeItem);
 
         menuBar.add(editMenu);
