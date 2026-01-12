@@ -82,18 +82,34 @@ public class GuardAnnotation extends Annotation<SMProposition> {
             List list = assembly.getAssemblyGuards();
             List<SMProposition> guards = (List<SMProposition>) list;
 
-            // If associatedTransition and source has semantics, filter guards to those appearing in the source state's semantics.
+            // If associatedTransition and source has semantics, filter guards appropriately.
+            // For autonomous transitions use reactiveSemantics (ExitZone targets).
+            // For non-autonomous transitions fall back to stateSemantics as before.
             boolean filteredBySemantics = false;
             Set<String> candidateStrings = new LinkedHashSet<>();
             if (associatedTransition != null) {
                 machinery.StateInterface src = associatedTransition.getSource();
-                if (src instanceof PWSState) {
-                    Semantics sem = ((PWSState) src).getStateSemantics();
-                    if (sem != null && !sem.getConfigurations().isEmpty()) {
-                        filteredBySemantics = true;
-                        for (Configuration conf : sem.getConfigurations()) {
-                            for (BasicStateProposition bsp : conf.getBasicStatePropositions()) {
-                                candidateStrings.add(bsp.toString());
+                if (src instanceof PWSState p) {
+                    // Autonomous transitions -> use reactiveSemantics ExitZone targets
+                    if (associatedTransition.isAutonomous()) {
+                        java.util.HashSet<pws.editor.semantics.ExitZone> reactive = p.getReactiveSemantics();
+                        if (reactive != null && !reactive.isEmpty()) {
+                            filteredBySemantics = true;
+                            for (pws.editor.semantics.ExitZone zone : reactive) {
+                                if (zone != null && zone.getTarget() != null) {
+                                    candidateStrings.add(zone.getTarget().toString());
+                                }
+                            }
+                        }
+                    } else {
+                        // Non-autonomous: preserve previous behavior using stateSemantics configurations
+                        Semantics sem = p.getStateSemantics();
+                        if (sem != null && !sem.getConfigurations().isEmpty()) {
+                            filteredBySemantics = true;
+                            for (Configuration conf : sem.getConfigurations()) {
+                                for (BasicStateProposition bsp : conf.getBasicStatePropositions()) {
+                                    candidateStrings.add(bsp.toString());
+                                }
                             }
                         }
                     }
